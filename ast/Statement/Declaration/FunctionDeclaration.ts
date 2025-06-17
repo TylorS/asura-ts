@@ -1,14 +1,16 @@
-import { Type, TypeParameter } from "../../Type/mod.ts";
-import { Span } from "../../Span.ts";
-import { Identifier } from "../../Identifer.ts";
-import { EffectRecordSignature } from "../../Type/EffectRecordSignature.ts";
 import { Expression } from "../../Expression/Expression.ts";
+import { Identifier } from "../../Identifer.ts";
+import { Span } from "../../Span.ts";
+import { EffectRecordSignature } from "../../Type/EffectRecordSignature.ts";
+import { Type, TypeParameter } from "../../Type/mod.ts";
+import { ExportKeyword } from "./ExportKeyword.ts";
 
 export class FunctionDeclaration { 
   readonly kind = 'FunctionDeclaration'
 
   constructor(
-    readonly name: string,
+    readonly exportKeyword: ExportKeyword | null,
+    readonly name: Identifier,
     readonly typeParameters: readonly TypeParameter[],
     readonly parameters: ReadonlyArray<FunctionParameter>,
     readonly returnType: Type,

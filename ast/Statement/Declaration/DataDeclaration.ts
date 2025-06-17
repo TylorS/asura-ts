@@ -2,6 +2,7 @@ import { Identifier } from "../../Identifer.ts";
 import { Span } from "../../Span.ts";
 import { Type } from "../../Type/mod.ts";
 import { TypeParameter } from "../../Type/TypeParameter.ts";
+import { ExportKeyword } from "./ExportKeyword.ts";
 
 // VoidConstructor: like "Nothing"
 export class VoidConstructor {
@@ -49,6 +50,7 @@ export class DataDeclaration {
   readonly kind = "DataDeclaration";
 
   constructor(
+    readonly exportKeyword: ExportKeyword | null,
     readonly name: Identifier,
     readonly typeParameters: readonly TypeParameter[],
     readonly constructors: readonly DataConstructor[],

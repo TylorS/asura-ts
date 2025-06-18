@@ -1,19 +1,19 @@
 import {
-  Type,
-  TypeVariable,
-  TypeConstructor,
-  PrimitiveType,
-  FunctionType,
-  RecordType,
-  VariantType,
   ApplicationType,
-  ForallType,
   EffectType,
-  HandlerType,
-  RowType,
-  Variance,
-  OperationType,
+  ForallType,
+  FunctionType,
   HandlerOperation,
+  HandlerType,
+  OperationType,
+  PrimitiveType,
+  RecordType,
+  RowType,
+  Type,
+  TypeConstructor,
+  TypeVariable,
+  Variance,
+  VariantType,
 } from "./Type.ts";
 
 // Type environment for variable bindings
@@ -107,7 +107,7 @@ export class TypeChecker {
   isSubtype(
     left: Type,
     right: Type,
-    variance: Variance = "covariant"
+    variance: Variance = "covariant",
   ): boolean {
     left = this.substitute(left);
     right = this.substitute(right);
@@ -173,7 +173,7 @@ export class TypeChecker {
         !this.isSubtype(
           right.parameters[i],
           left.parameters[i],
-          "contravariant"
+          "contravariant",
         )
       ) {
         return false;
@@ -211,7 +211,7 @@ export class TypeChecker {
 
   private isApplicationSubtype(
     left: ApplicationType,
-    right: ApplicationType
+    right: ApplicationType,
   ): boolean {
     if (!this.typesEqual(left.constructor, right.constructor)) return false;
 
@@ -248,7 +248,7 @@ export class TypeChecker {
     const rightBodySubst = this.substituteForallVars(
       right.body,
       right.variables,
-      freshVars
+      freshVars,
     );
 
     // Check if left's body is subtype of substituted right body
@@ -258,7 +258,7 @@ export class TypeChecker {
   private substituteForallVars(
     type: Type,
     oldVars: TypeVariable[],
-    newVars: TypeVariable[]
+    newVars: TypeVariable[],
   ): Type {
     // Create substitution map
     const substMap = new Map<number, Type>();
@@ -279,7 +279,7 @@ export class TypeChecker {
   applyTypeConstructor(constructor: TypeConstructor, args: Type[]): Type {
     if (constructor.arity !== args.length) {
       throw new Error(
-        `Type constructor ${constructor.name} expects ${constructor.arity} arguments, got ${args.length}`
+        `Type constructor ${constructor.name} expects ${constructor.arity} arguments, got ${args.length}`,
       );
     }
 
@@ -337,11 +337,12 @@ export class TypeChecker {
 
   private checkHandlerOperation(
     handlerOp: HandlerOperation,
-    effectOp: OperationType
+    effectOp: OperationType,
   ): boolean {
     // Parameters must match
-    if (handlerOp.parameters.length !== effectOp.parameters.length)
+    if (handlerOp.parameters.length !== effectOp.parameters.length) {
       return false;
+    }
 
     for (let i = 0; i < handlerOp.parameters.length; i++) {
       if (!this.typesEqual(handlerOp.parameters[i], effectOp.parameters[i])) {
@@ -447,7 +448,7 @@ export class TypeChecker {
     return (
       ((!left.tail && !right.tail) ||
         (left.tail && right.tail && this.typesEqual(left.tail, right.tail))) ??
-      false
+        false
     );
   }
 
@@ -475,7 +476,7 @@ export class TypeChecker {
               !this.isSubtype(
                 constraint.left,
                 constraint.right,
-                constraint.variance
+                constraint.variance,
               )
             ) {
               return false;
@@ -519,30 +520,30 @@ export class TypeChecker {
       if (left.parameters.length !== right.parameters.length) {
         return false;
       }
-      
+
       // Unify parameters
       for (let i = 0; i < left.parameters.length; i++) {
         if (!this.unify(left.parameters[i], right.parameters[i])) {
           return false;
         }
       }
-      
+
       // Unify return types
       if (!this.unify(left.returnType, right.returnType)) {
         return false;
       }
-      
+
       // Unify effects (simplified)
       if (left.effects.length !== right.effects.length) {
         return false;
       }
-      
+
       for (let i = 0; i < left.effects.length; i++) {
         if (!this.unify(left.effects[i], right.effects[i])) {
           return false;
         }
       }
-      
+
       return true;
     }
 
@@ -553,23 +554,23 @@ export class TypeChecker {
     if (type.kind === "TypeVariable") {
       return type.id === varId;
     }
-    
+
     switch (type.kind) {
       case "FunctionType":
-        return type.parameters.some(p => this.containsVariable(p, varId)) ||
-               this.containsVariable(type.returnType, varId) ||
-               type.effects.some(e => this.containsVariable(e, varId));
-      
+        return type.parameters.some((p) => this.containsVariable(p, varId)) ||
+          this.containsVariable(type.returnType, varId) ||
+          type.effects.some((e) => this.containsVariable(e, varId));
+
       case "RecordType":
         return this.containsVariableInRow(type.row, varId);
-      
+
       case "ApplicationType":
         return this.containsVariable(type.constructor, varId) ||
-               type.arguments.some(a => this.containsVariable(a, varId));
-      
+          type.arguments.some((a) => this.containsVariable(a, varId));
+
       case "ForallType":
         return this.containsVariable(type.body, varId);
-      
+
       default:
         return false;
     }
@@ -586,7 +587,7 @@ export class TypeChecker {
 
   private operationTypesEqual(
     left: OperationType,
-    right: OperationType
+    right: OperationType,
   ): boolean {
     return (
       left.parameters.length === right.parameters.length &&
@@ -600,7 +601,7 @@ export class TypeChecker {
 
   private handlerOperationsEqual(
     left: HandlerOperation,
-    right: HandlerOperation
+    right: HandlerOperation,
   ): boolean {
     return (
       left.parameters.length === right.parameters.length &&
@@ -616,7 +617,7 @@ export class TypeChecker {
   instantiate(forallType: ForallType, args: Type[]): Type {
     if (forallType.variables.length !== args.length) {
       throw new Error(
-        `Cannot instantiate ForAll type: expected ${forallType.variables.length} type arguments, got ${args.length}`
+        `Cannot instantiate ForAll type: expected ${forallType.variables.length} type arguments, got ${args.length}`,
       );
     }
 
@@ -647,12 +648,20 @@ export class TypeChecker {
 
 export class UnificationError extends Error {
   constructor(public left: Type, public right: Type, message: string) {
-    super(`Cannot unify ${JSON.stringify(left)} with ${JSON.stringify(right)}: ${message}`);
+    super(
+      `Cannot unify ${JSON.stringify(left)} with ${
+        JSON.stringify(right)
+      }: ${message}`,
+    );
   }
 }
 
 export class OccursCheckError extends Error {
   constructor(public variable: Type, public type: Type) {
-    super(`Occurs check failed: ${JSON.stringify(variable)} occurs in ${JSON.stringify(type)}`);
+    super(
+      `Occurs check failed: ${JSON.stringify(variable)} occurs in ${
+        JSON.stringify(type)
+      }`,
+    );
   }
 }

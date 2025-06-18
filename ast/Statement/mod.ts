@@ -1,4 +1,3 @@
-export * from "../Expression/Block.ts";
 export * from "./Comment.ts";
 export * from "./ControlFlow/mod.ts";
 export * from "./Declaration/mod.ts";

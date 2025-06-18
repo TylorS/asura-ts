@@ -1,60 +1,66 @@
 import { Span, SpanLocation } from "./Span.ts";
-import { SYMBOLS, SymbolKind, SymbolValue, getPossibleMultiCharOperators, MULTI_CHAR_OPERATORS } from "./Symbols.ts";
 import {
-  Token,
-  Identifier,
-  IntegerLiteral,
-  FloatLiteral,
+  getPossibleMultiCharOperators,
+  MULTI_CHAR_OPERATORS,
+  SymbolKind,
+  SYMBOLS,
+  SymbolValue,
+} from "./Symbols.ts";
+import {
   BooleanLiteral,
-  StringLiteral,
-  Symbol,
+  BreakKeyword,
   Comment,
-  MultiLineComment,
-  Whitespace,
-  Newline,
-  // Keywords
-  ExportKeyword,
+  ContinueKeyword,
   DataKeyword,
   EffectKeyword,
+  ElseKeyword,
+  // Keywords
+  ExportKeyword,
+  FloatLiteral,
+  ForKeyword,
   FunKeyword,
+  HandleKeyword,
+  Identifier,
+  IfKeyword,
   ImportKeyword,
+  InKeyword,
+  IntegerLiteral,
   InterfaceKeyword,
   LetKeyword,
-  TypeKeyword,
-  BreakKeyword,
-  ContinueKeyword,
-  ElseKeyword,
-  ForKeyword,
-  IfKeyword,
-  InKeyword,
-  ReturnKeyword,
-  WhileKeyword,
-  HandleKeyword,
   MatchKeyword,
+  MultiLineComment,
+  Newline,
+  ReturnKeyword,
+  StringLiteral,
+  Symbol,
+  Token,
+  TypeKeyword,
+  WhileKeyword,
+  Whitespace,
   WithKeyword,
 } from "./Token.ts";
 
 // Keywords mapping
 const KEYWORDS = {
-  'export': ExportKeyword,
-  'data': DataKeyword,
-  'effect': EffectKeyword,
-  'fun': FunKeyword,
-  'import': ImportKeyword,
-  'interface': InterfaceKeyword,
-  'let': LetKeyword,
-  'type': TypeKeyword,
-  'break': BreakKeyword,
-  'continue': ContinueKeyword,
-  'else': ElseKeyword,
-  'for': ForKeyword,
-  'if': IfKeyword,
-  'in': InKeyword,
-  'return': ReturnKeyword,
-  'while': WhileKeyword,
-  'handle': HandleKeyword,
-  'match': MatchKeyword,
-  'with': WithKeyword,
+  "export": ExportKeyword,
+  "data": DataKeyword,
+  "effect": EffectKeyword,
+  "fun": FunKeyword,
+  "import": ImportKeyword,
+  "interface": InterfaceKeyword,
+  "let": LetKeyword,
+  "type": TypeKeyword,
+  "break": BreakKeyword,
+  "continue": ContinueKeyword,
+  "else": ElseKeyword,
+  "for": ForKeyword,
+  "if": IfKeyword,
+  "in": InKeyword,
+  "return": ReturnKeyword,
+  "while": WhileKeyword,
+  "handle": HandleKeyword,
+  "match": MatchKeyword,
+  "with": WithKeyword,
 } as const;
 
 // Tokenizer state machine states
@@ -78,13 +84,13 @@ export class IncrementalTokenizer {
   private position: number = 0;
   private line: number = 0;
   private column: number = 0;
-  
+
   // Current token being built
   private currentState: TokenState = TokenState.START;
-  private currentBuffer: string = '';
+  private currentBuffer: string = "";
   private tokenStartLocation: SpanLocation | null = null;
-  private stringQuoteChar: string = '';
-  
+  private stringQuoteChar: string = "";
+
   constructor(private readonly source: string) {}
 
   // Main incremental tokenizer - yields tokens as they're completed
@@ -92,14 +98,14 @@ export class IncrementalTokenizer {
     while (this.position < this.source.length) {
       const char = this.source[this.position];
       const token = this.processCharacter(char);
-      
+
       if (token) {
         yield token;
       }
-      
+
       this.advance();
     }
-    
+
     // Handle any remaining token at end of input
     const finalToken = this.finishCurrentToken();
     if (finalToken) {
@@ -111,41 +117,41 @@ export class IncrementalTokenizer {
     switch (this.currentState) {
       case TokenState.START:
         return this.handleStartState(char);
-      
+
       case TokenState.IN_IDENTIFIER:
         return this.handleIdentifierState(char);
-      
+
       case TokenState.IN_NUMBER:
         return this.handleNumberState(char);
-      
+
       case TokenState.IN_NUMBER_DOT:
         return this.handleNumberDotState(char);
-      
+
       case TokenState.IN_FLOAT:
         return this.handleFloatState(char);
-      
+
       case TokenState.IN_STRING_DOUBLE:
       case TokenState.IN_STRING_SINGLE:
         return this.handleStringState(char);
-      
+
       case TokenState.IN_STRING_ESCAPE:
         return this.handleStringEscapeState(char);
-      
+
       case TokenState.IN_COMMENT_SINGLE:
         return this.handleSingleCommentState(char);
-      
+
       case TokenState.IN_COMMENT_MULTI:
         return this.handleMultiCommentState(char);
-      
+
       case TokenState.IN_COMMENT_MULTI_STAR:
         return this.handleMultiCommentStarState(char);
-      
+
       case TokenState.IN_OPERATOR:
         return this.handleOperatorState(char);
-      
+
       case TokenState.IN_WHITESPACE:
         return this.handleWhitespaceState(char);
-      
+
       default:
         throw new Error(`Unknown state: ${this.currentState}`);
     }
@@ -153,11 +159,14 @@ export class IncrementalTokenizer {
 
   private handleStartState(char: string): Token | null {
     // Handle whitespace - emit tokens instead of skipping
-    if (char === '\n') {
-      const span = new Span(this.getCurrentLocation(), this.getCurrentLocation());
+    if (char === "\n") {
+      const span = new Span(
+        this.getCurrentLocation(),
+        this.getCurrentLocation(),
+      );
       return new Newline(span);
     }
-    
+
     if (/[ \t\r]/.test(char)) {
       this.startNewToken();
       this.currentState = TokenState.IN_WHITESPACE;
@@ -197,7 +206,7 @@ export class IncrementalTokenizer {
     }
 
     // Start of comment
-    if (char === '/') {
+    if (char === "/") {
       this.currentState = TokenState.IN_OPERATOR;
       this.currentBuffer = char;
       return null;
@@ -232,11 +241,11 @@ export class IncrementalTokenizer {
     // End of identifier - create token and handle current character
     const token = this.createIdentifierOrKeywordToken();
     this.resetToStart();
-    
+
     // Don't advance - let the next iteration handle this character
     this.position--;
     this.column--;
-    
+
     return token;
   }
 
@@ -248,14 +257,14 @@ export class IncrementalTokenizer {
     }
 
     // Start of float
-    if (char === '.') {
+    if (char === ".") {
       this.currentState = TokenState.IN_NUMBER_DOT;
       this.currentBuffer += char;
       return null;
     }
 
     // BigInt suffix
-    if (char === 'n') {
+    if (char === "n") {
       this.currentBuffer += char;
       const token = this.createIntegerToken();
       this.resetToStart();
@@ -265,11 +274,11 @@ export class IncrementalTokenizer {
     // End of number
     const token = this.createIntegerToken();
     this.resetToStart();
-    
+
     // Don't advance - let the next iteration handle this character
     this.position--;
     this.column--;
-    
+
     return token;
   }
 
@@ -284,13 +293,16 @@ export class IncrementalTokenizer {
     // Not a valid float - backtrack
     // This is a number followed by a dot
     const numberPart = this.currentBuffer.slice(0, -1);
-    const numberToken = new IntegerLiteral(numberPart, new Span(this.tokenStartLocation!, this.getCurrentLocation()));
-    
+    const numberToken = new IntegerLiteral(
+      numberPart,
+      new Span(this.tokenStartLocation!, this.getCurrentLocation()),
+    );
+
     // Reset and start over with the dot
     this.resetToStart();
     this.position--;
     this.column--;
-    
+
     return numberToken;
   }
 
@@ -302,7 +314,7 @@ export class IncrementalTokenizer {
     }
 
     // BigDecimal suffix
-    if (char === 'n') {
+    if (char === "n") {
       this.currentBuffer += char;
       const token = this.createFloatToken();
       this.resetToStart();
@@ -312,11 +324,11 @@ export class IncrementalTokenizer {
     // End of float
     const token = this.createFloatToken();
     this.resetToStart();
-    
+
     // Don't advance
     this.position--;
     this.column--;
-    
+
     return token;
   }
 
@@ -331,7 +343,7 @@ export class IncrementalTokenizer {
     }
 
     // Start of escape sequence
-    if (char === '\\') {
+    if (char === "\\") {
       this.currentState = TokenState.IN_STRING_ESCAPE;
       return null;
     }
@@ -343,13 +355,15 @@ export class IncrementalTokenizer {
   private handleStringEscapeState(char: string): Token | null {
     this.currentBuffer += char;
     // Return to string state after escape
-    this.currentState = this.stringQuoteChar === '"' ? TokenState.IN_STRING_DOUBLE : TokenState.IN_STRING_SINGLE;
+    this.currentState = this.stringQuoteChar === '"'
+      ? TokenState.IN_STRING_DOUBLE
+      : TokenState.IN_STRING_SINGLE;
     return null;
   }
 
   private handleSingleCommentState(char: string): Token | null {
     // End of line comment
-    if (char === '\n') {
+    if (char === "\n") {
       const token = new Comment(this.currentBuffer, this.createSpan());
       this.resetToStart();
       // Don't advance - let newline be processed normally
@@ -373,18 +387,18 @@ export class IncrementalTokenizer {
     // End of whitespace
     const token = new Whitespace(this.currentBuffer, this.createSpan());
     this.resetToStart();
-    
+
     // Don't advance - let the next iteration handle this character
     this.position--;
     this.column--;
-    
+
     return token;
   }
 
   private handleMultiCommentState(char: string): Token | null {
     this.currentBuffer += char;
-    
-    if (char === '*') {
+
+    if (char === "*") {
       this.currentState = TokenState.IN_COMMENT_MULTI_STAR;
     }
     return null;
@@ -392,15 +406,15 @@ export class IncrementalTokenizer {
 
   private handleMultiCommentStarState(char: string): Token | null {
     this.currentBuffer += char;
-    
-    if (char === '/') {
+
+    if (char === "/") {
       // End of multi-line comment
       const token = new MultiLineComment(this.currentBuffer, this.createSpan());
       this.resetToStart();
       return token;
     }
 
-    if (char === '*') {
+    if (char === "*") {
       // Stay in star state
       return null;
     }
@@ -414,29 +428,31 @@ export class IncrementalTokenizer {
     const newBuffer = this.currentBuffer + char;
 
     // Check for comment start
-    if (this.currentBuffer === '/' && char === '/') {
+    if (this.currentBuffer === "/" && char === "/") {
       this.currentState = TokenState.IN_COMMENT_SINGLE;
       this.currentBuffer = newBuffer; // Include both slashes
       return null;
     }
 
-    if (this.currentBuffer === '/' && char === '*') {
+    if (this.currentBuffer === "/" && char === "*") {
       this.currentState = TokenState.IN_COMMENT_MULTI;
-      this.currentBuffer = newBuffer; // Include /* 
+      this.currentBuffer = newBuffer; // Include /*
       return null;
     }
 
     // Check if this could be a longer operator
     const possibleOps = getPossibleMultiCharOperators(newBuffer);
-    
+
     if (possibleOps.length > 0) {
       // Could be a longer operator - add the character and continue
       this.currentBuffer = newBuffer;
-      
+
       // Check if we have an exact match
       if (possibleOps.includes(newBuffer)) {
         // We have a complete operator, but check if it could be longer
-        const longerOps = possibleOps.filter(op => op.length > newBuffer.length);
+        const longerOps = possibleOps.filter((op) =>
+          op.length > newBuffer.length
+        );
         if (longerOps.length === 0) {
           // No longer operators possible - emit this one
           const token = this.createOperatorToken(newBuffer);
@@ -444,7 +460,7 @@ export class IncrementalTokenizer {
           return token;
         }
       }
-      
+
       return null;
     }
 
@@ -452,28 +468,28 @@ export class IncrementalTokenizer {
     if (MULTI_CHAR_OPERATORS.has(this.currentBuffer)) {
       const token = this.createOperatorToken(this.currentBuffer);
       this.resetToStart();
-      
+
       // Don't advance - handle current character next
       this.position--;
       this.column--;
-      
+
       return token;
     }
 
     // No longer operator possible - emit current buffer as single operator
     const token = this.createOperatorToken(this.currentBuffer);
     this.resetToStart();
-    
+
     // Don't advance - handle current character next
     this.position--;
     this.column--;
-    
+
     return token;
   }
 
   private advance(): void {
     if (this.position < this.source.length) {
-      if (this.source[this.position] === '\n') {
+      if (this.source[this.position] === "\n") {
         this.line++;
         this.column = 0;
       } else {
@@ -485,14 +501,14 @@ export class IncrementalTokenizer {
 
   private startNewToken(): void {
     this.tokenStartLocation = this.getCurrentLocation();
-    this.currentBuffer = '';
+    this.currentBuffer = "";
   }
 
   private resetToStart(): void {
     this.currentState = TokenState.START;
-    this.currentBuffer = '';
+    this.currentBuffer = "";
     this.tokenStartLocation = null;
-    this.stringQuoteChar = '';
+    this.stringQuoteChar = "";
   }
 
   private getCurrentLocation(): SpanLocation {
@@ -505,17 +521,18 @@ export class IncrementalTokenizer {
 
   private createIdentifierOrKeywordToken(): Token {
     const span = this.createSpan();
-    
+
     // Check for boolean literals first
-    if (this.currentBuffer === 'true' || this.currentBuffer === 'false') {
+    if (this.currentBuffer === "true" || this.currentBuffer === "false") {
       return new BooleanLiteral(this.currentBuffer as "true" | "false", span);
     }
-    
+
     if (Object.hasOwn(KEYWORDS, this.currentBuffer)) {
-      const KeywordClass = KEYWORDS[this.currentBuffer as keyof typeof KEYWORDS];
+      const KeywordClass =
+        KEYWORDS[this.currentBuffer as keyof typeof KEYWORDS];
       return new KeywordClass(span);
     }
-    
+
     return new Identifier(this.currentBuffer, span);
   }
 
@@ -554,26 +571,26 @@ export class IncrementalTokenizer {
     switch (this.currentState) {
       case TokenState.IN_IDENTIFIER:
         return this.createIdentifierOrKeywordToken();
-      
+
       case TokenState.IN_NUMBER:
         return this.createIntegerToken();
-      
+
       case TokenState.IN_FLOAT:
         return this.createFloatToken();
-      
+
       case TokenState.IN_OPERATOR:
         return this.createOperatorToken(this.currentBuffer);
-      
+
       case TokenState.IN_WHITESPACE:
         return new Whitespace(this.currentBuffer, this.createSpan());
-        
+
       case TokenState.IN_COMMENT_SINGLE:
         return new Comment(this.currentBuffer, this.createSpan());
-        
+
       case TokenState.IN_COMMENT_MULTI:
       case TokenState.IN_COMMENT_MULTI_STAR:
         return new MultiLineComment(this.currentBuffer, this.createSpan());
-      
+
       default:
         return null;
     }
@@ -582,8 +599,7 @@ export class IncrementalTokenizer {
 
 // Main streaming tokenizer function
 export function* tokenize(source: string): Generator<Token, void, unknown> {
-  const tokenizer = new IncrementalTokenizer(source);
-  yield* tokenizer.tokenize();
+  yield* new IncrementalTokenizer(source).tokenize();
 }
 
 // Utility functions

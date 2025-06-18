@@ -1,6 +1,7 @@
+import { Span } from "../../../tokens/Span.ts";
+import { AsKeyword, ImportKeyword } from "../../../tokens/Token.ts";
 import { StringLiteral } from "../../Expression/Literal/StringLiteral.ts";
 import { Identifier } from "../../Identifer.ts";
-import { Span } from "../../../tokens/Span.ts";
 
 export class ImportDeclaration {
   readonly kind = "ImportDeclaration";
@@ -9,13 +10,8 @@ export class ImportDeclaration {
     readonly importKeyword: ImportKeyword,
     readonly imports: NamespaceImport | NamedImports,
     readonly specifier: StringLiteral,
-    readonly span: Span
+    readonly span: Span,
   ) {}
-}
-
-export class ImportKeyword {
-  readonly kind = "ImportKeyword";
-  constructor(readonly span: Span) {}
 }
 
 export class NamespaceImport {
@@ -34,11 +30,6 @@ export class NamedImport {
     readonly name: Identifier,
     readonly asKeyword: AsKeyword | null,
     readonly alias: Identifier | null,
-    readonly span: Span
+    readonly span: Span,
   ) {}
-}
-
-export class AsKeyword {
-  readonly kind = "AsKeyword";
-  constructor(readonly span: Span) {}
 }

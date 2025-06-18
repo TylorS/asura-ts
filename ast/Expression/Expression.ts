@@ -13,6 +13,7 @@ import type {
 import { MatchExpression } from "./MatchExpression.ts";
 import { FunctionExpression } from "./FunctionExpression.ts";
 import { Block } from "./Block.ts";
+import { Identifier } from "../Identifer.ts";
 
 export type Literal =
   | ArrayLiteral
@@ -26,6 +27,7 @@ export type Literal =
   | StringLiteral;
 
 export type Expression =
+  | Identifier
   | Literal
   | BinaryExpression
   | MatchExpression

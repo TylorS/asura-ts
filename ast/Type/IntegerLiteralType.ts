@@ -5,6 +5,6 @@ export class IntegerLiteralType {
 
   constructor(
     readonly value: number,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

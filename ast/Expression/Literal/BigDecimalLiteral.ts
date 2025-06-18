@@ -5,6 +5,6 @@ export class BigDecimalLiteral {
 
   constructor(
     readonly value: string, // Using string to represent decimal values
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

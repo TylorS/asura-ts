@@ -6,6 +6,6 @@ export class RegexLiteralType {
   constructor(
     readonly pattern: string,
     readonly flags: string | null,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

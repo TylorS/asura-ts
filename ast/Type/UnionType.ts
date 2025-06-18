@@ -6,6 +6,6 @@ export class UnionType {
 
   constructor(
     readonly types: readonly Type[],
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

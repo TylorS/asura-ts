@@ -6,6 +6,6 @@ export class Block {
 
   constructor(
     readonly statements: ReadonlyArray<Statement>,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

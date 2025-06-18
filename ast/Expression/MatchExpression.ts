@@ -10,7 +10,7 @@ export class LiteralPattern {
 
   constructor(
     readonly value: Literal,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -20,7 +20,7 @@ export class VariablePattern {
   constructor(
     readonly name: Identifier,
     readonly type: Type,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -28,7 +28,7 @@ export class WildcardPattern {
   readonly kind = "WildcardPattern";
 
   constructor(
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -37,7 +37,7 @@ export class VoidConstructorPattern {
 
   constructor(
     readonly constructorName: Identifier,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -47,7 +47,7 @@ export class TupleConstructorPattern {
   constructor(
     readonly constructorName: Identifier,
     readonly patterns: readonly Pattern[],
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -57,7 +57,7 @@ export class RecordConstructorPattern {
   constructor(
     readonly constructorName: Identifier,
     readonly fields: readonly RecordPatternField[],
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -71,7 +71,7 @@ export class TuplePattern {
 
   constructor(
     readonly patterns: readonly Pattern[],
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -92,7 +92,7 @@ export class MatchCase {
     readonly pattern: Pattern,
     readonly guard: Expression | null,
     readonly body: Expression | Block,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -103,7 +103,6 @@ export class MatchExpression {
   constructor(
     readonly expression: Expression,
     readonly cases: readonly MatchCase[],
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
-

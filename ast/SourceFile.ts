@@ -5,6 +5,6 @@ export class SourceFile {
   constructor(
     readonly fileName: string,
     readonly statements: ReadonlyArray<Statement>,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

@@ -11,6 +11,6 @@ export class ForInStatement {
     readonly variable: Identifier,
     readonly iterable: Expression,
     readonly body: Block,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

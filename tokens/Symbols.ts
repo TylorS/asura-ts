@@ -74,7 +74,7 @@ export type SymbolValue = (typeof SYMBOLS)[SymbolKind];
 
 // Reverse mapping for convenience
 export const SYMBOL_VALUES = Object.fromEntries(
-  Object.entries(SYMBOLS).map(([key, value]) => [value, key])
+  Object.entries(SYMBOLS).map(([key, value]) => [value, key]),
 ) as {
   [K in SymbolKind as (typeof SYMBOLS)[K]]: K;
 };
@@ -93,10 +93,10 @@ export function isSymbol(value: string): boolean {
 
 // Multi-character operators that need special handling in lexing
 export const MULTI_CHAR_OPERATORS = new Set<string>(
-  Object.values(SYMBOLS).filter(value => value.length > 1)
+  Object.values(SYMBOLS).filter((value) => value.length > 1),
 );
 
-export function getPossibleMultiCharOperators(value: string) { 
+export function getPossibleMultiCharOperators(value: string) {
   const possibleOperators: string[] = [];
 
   for (const operator of MULTI_CHAR_OPERATORS) {

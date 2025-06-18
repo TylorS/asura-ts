@@ -1,8 +1,8 @@
-import { Identifier } from "../../Identifer.ts";
 import { Span } from "../../../tokens/Span.ts";
+import { ExportKeyword } from "../../../tokens/Token.ts";
+import { Identifier } from "../../Identifer.ts";
 import { Type } from "../../Type/mod.ts";
 import { TypeParameter } from "../../Type/TypeParameter.ts";
-import { ExportKeyword } from "./ExportKeyword.ts";
 
 // VoidConstructor: like "Nothing"
 export class VoidConstructor {
@@ -10,7 +10,7 @@ export class VoidConstructor {
 
   constructor(
     readonly name: Identifier,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -21,7 +21,7 @@ export class TupleConstructor {
   constructor(
     readonly name: Identifier,
     readonly parameters: readonly Type[],
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -37,11 +37,11 @@ export class RecordConstructor {
   constructor(
     readonly name: Identifier,
     readonly fields: readonly RecordConstructorField[],
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
-export type DataConstructor = 
+export type DataConstructor =
   | VoidConstructor
   | TupleConstructor
   | RecordConstructor;
@@ -54,6 +54,6 @@ export class DataDeclaration {
     readonly name: Identifier,
     readonly typeParameters: readonly TypeParameter[],
     readonly constructors: readonly DataConstructor[],
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

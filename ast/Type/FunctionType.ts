@@ -12,7 +12,7 @@ export class FunctionType {
     readonly parameters: readonly FunctionParameterType[],
     readonly returnType: Type,
     readonly effects: EffectRecordSignature | null,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -23,6 +23,6 @@ export class FunctionParameterType {
     readonly name: Identifier,
     readonly type: Type,
     readonly effects: EffectRecordSignature | null,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

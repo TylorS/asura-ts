@@ -5,6 +5,6 @@ export class BigIntLiteral {
 
   constructor(
     readonly value: bigint,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

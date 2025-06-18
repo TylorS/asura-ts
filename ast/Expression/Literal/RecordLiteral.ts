@@ -12,6 +12,6 @@ export class RecordLiteral {
 
   constructor(
     readonly fields: readonly RecordField[],
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

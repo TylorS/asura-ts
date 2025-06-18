@@ -5,6 +5,6 @@ export class BooleanLiteral {
 
   constructor(
     readonly value: boolean,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

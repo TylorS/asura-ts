@@ -28,7 +28,7 @@ function runSimpleInferenceDemo() {
     ExpressionBuilder.record({
       name: ExpressionBuilder.str("Alice"),
       age: ExpressionBuilder.num(30),
-    })
+    }),
   );
 
   // Test 5: Functon composition
@@ -44,12 +44,12 @@ function runSimpleInferenceDemo() {
             ExpressionBuilder.var("f"),
             ExpressionBuilder.app(
               ExpressionBuilder.var("g"),
-              ExpressionBuilder.var("x")
-            )
-          )
-        )
-      )
-    )
+              ExpressionBuilder.var("x"),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   console.log("✨ Simple inference demo completed!");

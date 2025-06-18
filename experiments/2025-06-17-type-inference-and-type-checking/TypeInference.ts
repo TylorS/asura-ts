@@ -1,17 +1,17 @@
 import {
-  Type,
-  TypeVariable,
+  ApplicationType,
+  EffectType,
+  ForallType,
   FunctionType,
   RecordType,
-  VariantType,
-  ApplicationType,
-  ForallType,
-  EffectType,
   RowType,
+  Type,
+  TypeVariable,
+  VariantType,
 } from "./Type.ts";
-import { TypeChecker, Constraint, TypeEnvironment } from "./TypeChecker.ts";
+import { Constraint, TypeChecker, TypeEnvironment } from "./TypeChecker.ts";
 import { TypeFactory } from "./TypeHelpers.ts";
-import { Expression, MatchCase, HandlerCase } from "./Expression.ts";
+import { Expression, HandlerCase, MatchCase } from "./Expression.ts";
 
 // Inference result
 export type InferenceResult = {
@@ -24,9 +24,11 @@ export type InferenceResult = {
 export class UnificationError extends Error {
   constructor(left: Type, right: Type, reason: string) {
     super(
-      `Cannot unify ${JSON.stringify(left)} with ${JSON.stringify(
-        right
-      )}: ${reason}`
+      `Cannot unify ${JSON.stringify(left)} with ${
+        JSON.stringify(
+          right,
+        )
+      }: ${reason}`,
     );
   }
 }
@@ -35,7 +37,7 @@ export class UnificationError extends Error {
 export class OccursCheckError extends Error {
   constructor(variable: TypeVariable, type: Type) {
     super(
-      `Occurs check failed: ${variable.name} occurs in ${JSON.stringify(type)}`
+      `Occurs check failed: ${variable.name} occurs in ${JSON.stringify(type)}`,
     );
   }
 }
@@ -84,7 +86,7 @@ export class TypeInferenceEngine extends TypeChecker {
   // Main type inference entry point
   infer(
     expression: Expression,
-    environment: TypeEnvironment = new Map()
+    environment: TypeEnvironment = new Map(),
   ): InferenceResult {
     const result = this.inferExpression(expression, environment);
 
@@ -94,11 +96,11 @@ export class TypeInferenceEngine extends TypeChecker {
 
     if (!solved) {
       console.warn(
-        "Type inference failed: unsolvable constraints or hit iteration limit"
+        "Type inference failed: unsolvable constraints or hit iteration limit",
       );
       console.warn(
         "Constraints:",
-        result.constraints.map((c) => `${c.kind}: ${JSON.stringify(c)}`)
+        result.constraints.map((c) => `${c.kind}: ${JSON.stringify(c)}`),
       );
       throw new Error("Type inference failed: unsolvable constraints");
     }
@@ -112,7 +114,7 @@ export class TypeInferenceEngine extends TypeChecker {
 
   private inferExpression(
     expression: Expression,
-    environment: TypeEnvironment
+    environment: TypeEnvironment,
   ): InferenceResult {
     switch (expression.kind) {
       case "Literal":
@@ -125,14 +127,14 @@ export class TypeInferenceEngine extends TypeChecker {
         return this.inferLambda(
           expression.parameter,
           expression.body,
-          environment
+          environment,
         );
 
       case "Application":
         return this.inferApplication(
           expression.function,
           expression.argument,
-          environment
+          environment,
         );
 
       case "Let":
@@ -140,7 +142,7 @@ export class TypeInferenceEngine extends TypeChecker {
           expression.variable,
           expression.value,
           expression.body,
-          environment
+          environment,
         );
 
       case "Record":
@@ -150,7 +152,7 @@ export class TypeInferenceEngine extends TypeChecker {
         return this.inferFieldAccess(
           expression.record,
           expression.field,
-          environment
+          environment,
         );
 
       case "Variant":
@@ -160,7 +162,7 @@ export class TypeInferenceEngine extends TypeChecker {
         return this.inferMatch(
           expression.expression,
           expression.cases,
-          environment
+          environment,
         );
 
       case "EffectOperation":
@@ -168,7 +170,7 @@ export class TypeInferenceEngine extends TypeChecker {
           expression.effect,
           expression.operation,
           expression.arguments,
-          environment
+          environment,
         );
 
       case "Handle":
@@ -176,21 +178,21 @@ export class TypeInferenceEngine extends TypeChecker {
           expression.expression,
           expression.handlers,
           expression.returnCase,
-          environment
+          environment,
         );
 
       case "TypeAnnotation":
         return this.inferTypeAnnotation(
           expression.expression,
           expression.type,
-          environment
+          environment,
         );
 
       default:
         throw new Error(
           `Unknown expression kind: ${
             (expression as Record<string, never>).kind
-          }`
+          }`,
         );
     }
   }
@@ -210,7 +212,7 @@ export class TypeInferenceEngine extends TypeChecker {
 
   private inferVariable(
     name: string,
-    environment: TypeEnvironment
+    environment: TypeEnvironment,
   ): InferenceResult {
     const type = environment.get(name);
     if (!type) {
@@ -232,7 +234,7 @@ export class TypeInferenceEngine extends TypeChecker {
   private inferLambda(
     parameter: string,
     body: Expression,
-    environment: TypeEnvironment
+    environment: TypeEnvironment,
   ): InferenceResult {
     const paramType = this.freshTypeVariable("param");
     const newEnvironment = new Map(environment);
@@ -243,7 +245,7 @@ export class TypeInferenceEngine extends TypeChecker {
     const functionType = TypeFactory.func(
       [paramType],
       bodyResult.type,
-      bodyResult.effects
+      bodyResult.effects,
     );
 
     return {
@@ -256,7 +258,7 @@ export class TypeInferenceEngine extends TypeChecker {
   private inferApplication(
     func: Expression,
     arg: Expression,
-    environment: TypeEnvironment
+    environment: TypeEnvironment,
   ): InferenceResult {
     const funcResult = this.inferExpression(func, environment);
     const argResult = this.inferExpression(arg, environment);
@@ -289,16 +291,16 @@ export class TypeInferenceEngine extends TypeChecker {
     variable: string,
     value: Expression,
     body: Expression,
-    environment: TypeEnvironment
+    environment: TypeEnvironment,
   ): InferenceResult {
     const valueResult = this.inferExpression(value, environment);
 
     // Generalize the value type if it's not dependent on the environment
     const generalizedType = this.shouldGeneralize(valueResult.type, environment)
       ? this.generalize(
-          valueResult.type,
-          this.getFreeVariables(valueResult.type)
-        )
+        valueResult.type,
+        this.getFreeVariables(valueResult.type),
+      )
       : valueResult.type;
 
     const newEnvironment = new Map(environment);
@@ -315,7 +317,7 @@ export class TypeInferenceEngine extends TypeChecker {
 
   private inferRecord(
     fields: Map<string, Expression>,
-    environment: TypeEnvironment
+    environment: TypeEnvironment,
   ): InferenceResult {
     const fieldTypes = new Map<string, Type>();
     let allConstraints: Constraint[] = [];
@@ -348,7 +350,7 @@ export class TypeInferenceEngine extends TypeChecker {
   private inferFieldAccess(
     record: Expression,
     field: string,
-    environment: TypeEnvironment
+    environment: TypeEnvironment,
   ): InferenceResult {
     const recordResult = this.inferExpression(record, environment);
     const fieldType = this.freshTypeVariable("field");
@@ -387,7 +389,7 @@ export class TypeInferenceEngine extends TypeChecker {
   private inferVariant(
     tag: string,
     value: Expression,
-    environment: TypeEnvironment
+    environment: TypeEnvironment,
   ): InferenceResult {
     const valueResult = this.inferExpression(value, environment);
     const restRow = this.freshTypeVariable("rest");
@@ -413,7 +415,7 @@ export class TypeInferenceEngine extends TypeChecker {
   private inferMatch(
     expression: Expression,
     cases: Map<string, MatchCase>,
-    environment: TypeEnvironment
+    environment: TypeEnvironment,
   ): InferenceResult {
     const exprResult = this.inferExpression(expression, environment);
     const resultType = this.freshTypeVariable("match_result");
@@ -466,7 +468,7 @@ export class TypeInferenceEngine extends TypeChecker {
     effect: string,
     operation: string,
     args: Expression[],
-    environment: TypeEnvironment
+    environment: TypeEnvironment,
   ): InferenceResult {
     const effectType = this.effectEnvironment.get(effect);
     if (!effectType) {
@@ -484,7 +486,7 @@ export class TypeInferenceEngine extends TypeChecker {
     // Check argument types
     if (args.length !== operationType.parameters.length) {
       throw new Error(
-        `Operation ${operation} expects ${operationType.parameters.length} arguments, got ${args.length}`
+        `Operation ${operation} expects ${operationType.parameters.length} arguments, got ${args.length}`,
       );
     }
 
@@ -510,7 +512,7 @@ export class TypeInferenceEngine extends TypeChecker {
     expression: Expression,
     handlers: Map<string, HandlerCase>,
     returnCase: Expression,
-    environment: TypeEnvironment
+    environment: TypeEnvironment,
   ): InferenceResult {
     const exprResult = this.inferExpression(expression, environment);
     const returnResult = this.inferExpression(returnCase, environment);
@@ -534,7 +536,7 @@ export class TypeInferenceEngine extends TypeChecker {
       const resumeType = this.freshTypeVariable(`${operation}_resume`);
       handlerEnv.set(
         handler.resumeParameter,
-        TypeFactory.func([resumeType], returnResult.type)
+        TypeFactory.func([resumeType], returnResult.type),
       );
 
       const handlerBodyResult = this.inferExpression(handler.body, handlerEnv);
@@ -557,7 +559,7 @@ export class TypeInferenceEngine extends TypeChecker {
   private inferTypeAnnotation(
     expression: Expression,
     type: Type,
-    environment: TypeEnvironment
+    environment: TypeEnvironment,
   ): InferenceResult {
     const exprResult = this.inferExpression(expression, environment);
 
@@ -629,7 +631,7 @@ export class TypeInferenceEngine extends TypeChecker {
           throw new UnificationError(
             left,
             right,
-            `Cannot unify types of kind ${left.kind}`
+            `Cannot unify types of kind ${left.kind}`,
           );
       }
     } else {
@@ -755,14 +757,14 @@ export class TypeInferenceEngine extends TypeChecker {
       throw new UnificationError(
         { kind: "RecordType", row: left },
         { kind: "RecordType", row: right },
-        "Incompatible row structures"
+        "Incompatible row structures",
       );
     }
   }
 
   private unifyApplication(
     left: ApplicationType,
-    right: ApplicationType
+    right: ApplicationType,
   ): void {
     this.unifyTypes(left.constructor, right.constructor);
 
@@ -832,7 +834,7 @@ export class TypeInferenceEngine extends TypeChecker {
   private shouldGeneralize(type: Type, environment: TypeEnvironment): boolean {
     // Get free type variables in the type
     const freeVars = this.getFreeVariables(type);
-    
+
     // Check if any free variables are bound in the environment
     for (const freeVar of freeVars) {
       for (const [_, envType] of environment) {
@@ -841,7 +843,7 @@ export class TypeInferenceEngine extends TypeChecker {
         }
       }
     }
-    
+
     // If no free variables are bound in the environment, we can generalize
     return true;
   }
@@ -868,7 +870,7 @@ export class TypeInferenceEngine extends TypeChecker {
         type.effects.forEach((e) => this.collectFreeVariables(e, freeVars));
         break;
 
-      // Add other cases as needed
+        // Add other cases as needed
     }
   }
 
@@ -945,7 +947,7 @@ export class TypeInferenceEngine extends TypeChecker {
 
     if (iterations >= maxIterations) {
       console.warn(
-        `Constraint solving hit iteration limit of ${maxIterations}`
+        `Constraint solving hit iteration limit of ${maxIterations}`,
       );
       return false;
     }

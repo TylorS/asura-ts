@@ -5,6 +5,6 @@ export class StringLiteral {
 
   constructor(
     readonly value: string,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

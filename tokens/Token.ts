@@ -2,6 +2,7 @@ import { Span } from "./Span.ts";
 import { SymbolKind, SYMBOLS } from "./Symbols.ts";
 
 export type Token =
+  | AsKeyword
   | BooleanLiteral
   | BreakKeyword
   | Comment
@@ -30,7 +31,7 @@ export type Token =
   | TypeKeyword
   | WhileKeyword
   | Whitespace
-  | WithKeyword
+  | WithKeyword;
 
 export abstract class Spanned<Kind extends string> {
   constructor(readonly kind: Kind, readonly span: Span) {}
@@ -74,6 +75,12 @@ export class FunKeyword extends Keyword<"fun"> {
 export class ImportKeyword extends Keyword<"import"> {
   constructor(span: Span) {
     super("import", span);
+  }
+}
+
+export class AsKeyword extends Keyword<"as"> {
+  constructor(span: Span) {
+    super("as", span);
   }
 }
 
@@ -200,7 +207,7 @@ export class Symbol<T extends SymbolKind> extends Spanned<"Symbol"> {
   constructor(
     readonly symbol: T,
     readonly text: (typeof SYMBOLS)[T],
-    span: Span
+    span: Span,
   ) {
     super("Symbol", span);
   }

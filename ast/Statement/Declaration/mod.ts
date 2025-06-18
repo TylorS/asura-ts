@@ -1,13 +1,16 @@
-export { 
-  DataDeclaration, 
-  VoidConstructor, 
-  TupleConstructor, 
-  RecordConstructor, 
+export {
   type DataConstructor,
-  type RecordConstructorField 
+  DataDeclaration,
+  RecordConstructor,
+  type RecordConstructorField,
+  TupleConstructor,
+  VoidConstructor,
 } from "./DataDeclaration.ts";
 export type { Declaration } from "./Declaration.ts";
-export { EffectDeclaration, type EffectSignature } from "./EffectDeclaration.ts";
+export {
+  EffectDeclaration,
+  type EffectSignature,
+} from "./EffectDeclaration.ts";
 export { FunctionDeclaration } from "./FunctionDeclaration.ts";
 export { InterfaceDeclaration } from "./InterfaceDeclaration.ts";
 export { LetDeclaration } from "./LetDeclaration.ts";

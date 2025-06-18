@@ -6,6 +6,6 @@ export class ArrayType {
 
   constructor(
     readonly elementType: Type,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

@@ -6,6 +6,6 @@ export class BreakStatement {
 
   constructor(
     readonly label: Identifier | null,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

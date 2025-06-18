@@ -1,19 +1,19 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from "vitest";
 import { tokenizeToArray } from "./Tokenizer.ts";
 
 function formatTokens(source: string) {
   const tokens = tokenizeToArray(source);
-  return tokens.map(token => {
-    const text = 'text' in token ? token.text : '';
-    return `${token.kind}${text ? `("${text}")` : ''}`;
+  return tokens.map((token) => {
+    const text = "text" in token ? token.text : "";
+    return `${token.kind}${text ? `("${text}")` : ""}`;
   });
 }
 
-describe('Tokenizer', () => {
-  it('should tokenize keywords correctly', () => {
+describe("Tokenizer", () => {
+  it("should tokenize keywords correctly", () => {
     const source = "export data effect fun import interface let type";
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "export",
@@ -35,10 +35,11 @@ describe('Tokenizer', () => {
     `);
   });
 
-  it('should tokenize control flow keywords correctly', () => {
-    const source = "break continue else for if in return while handle match with";
+  it("should tokenize control flow keywords correctly", () => {
+    const source =
+      "break continue else for if in return while handle match with";
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "break",
@@ -66,10 +67,10 @@ describe('Tokenizer', () => {
     `);
   });
 
-  it('should tokenize literals correctly', () => {
+  it("should tokenize literals correctly", () => {
     const source = `42 3.14 42n 3.14n true false "hello" 'world'`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "IntegerLiteral("42")",
@@ -91,10 +92,10 @@ describe('Tokenizer', () => {
     `);
   });
 
-  it('should tokenize identifiers and keywords mixed', () => {
+  it("should tokenize identifiers and keywords mixed", () => {
     const source = "let myVar = true; export const PI = 3.14;";
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "let",
@@ -120,10 +121,11 @@ describe('Tokenizer', () => {
     `);
   });
 
-  it('should tokenize operators and symbols correctly', () => {
-    const source = "+ - * / == != < > <= >= ++ -- => ... = : ; , ( ) [ ] { } | &";
+  it("should tokenize operators and symbols correctly", () => {
+    const source =
+      "+ - * / == != < > <= >= ++ -- => ... = : ; , ( ) [ ] { } | &";
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "Symbol("+")",
@@ -181,13 +183,13 @@ describe('Tokenizer', () => {
     `);
   });
 
-  it('should tokenize comments correctly', () => {
+  it("should tokenize comments correctly", () => {
     const source = `// Single line comment
 /* Multi-line
    comment */
 let x = 5; // End of line comment`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "Comment("// Single line comment")",
@@ -209,10 +211,10 @@ let x = 5; // End of line comment`;
     `);
   });
 
-  it('should tokenize strings with escapes correctly', () => {
+  it("should tokenize strings with escapes correctly", () => {
     const source = `"hello\\nworld" 'single\\tquote' "empty" ''`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "StringLiteral(""hello\\nworld"")",
@@ -226,10 +228,10 @@ let x = 5; // End of line comment`;
     `);
   });
 
-  it('should tokenize numbers and floats correctly', () => {
+  it("should tokenize numbers and floats correctly", () => {
     const source = "0 42 123 0.5 3.14159 42n 3.14n";
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "IntegerLiteral("0")",
@@ -249,13 +251,13 @@ let x = 5; // End of line comment`;
     `);
   });
 
-  it('should tokenize complex function correctly', () => {
+  it("should tokenize complex function correctly", () => {
     const source = `fun fibonacci(n: number): number {
   if (n <= 1) return n;
   return fibonacci(n - 1) + fibonacci(n - 2);
 }`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "fun",
@@ -318,10 +320,10 @@ let x = 5; // End of line comment`;
     `);
   });
 
-  it('should tokenize data type definition correctly', () => {
+  it("should tokenize data type definition correctly", () => {
     const source = `data Maybe<T> = Some(T) | None;`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "data",
@@ -346,13 +348,13 @@ let x = 5; // End of line comment`;
     `);
   });
 
-  it('should tokenize match expression correctly', () => {
+  it("should tokenize match expression correctly", () => {
     const source = `match result with {
   Some(value) => handle(value),
   None => return null,
 }`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "match",
@@ -392,10 +394,10 @@ let x = 5; // End of line comment`;
     `);
   });
 
-  it('should handle edge cases correctly', () => {
+  it("should handle edge cases correctly", () => {
     const source = "123.toString() 456..range";
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "IntegerLiteral("123")",
@@ -410,24 +412,24 @@ let x = 5; // End of line comment`;
     `);
   });
 
-  it('should handle empty and minimal cases', () => {
-    expect(formatTokens("")).toMatchInlineSnapshot(`[]`)
+  it("should handle empty and minimal cases", () => {
+    expect(formatTokens("")).toMatchInlineSnapshot(`[]`);
     expect(formatTokens(" ")).toMatchInlineSnapshot(`
       [
         "Whitespace(" ")",
       ]
-    `)
+    `);
     expect(formatTokens("\n")).toMatchInlineSnapshot(`
       [
         "Newline",
       ]
-    `)
+    `);
   });
 
-  it('should tokenize multi-character operators correctly', () => {
+  it("should tokenize multi-character operators correctly", () => {
     const source = "a == b != c <= d >= e ++ f -- g => h ... i";
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "Identifier("a")",
@@ -468,10 +470,10 @@ let x = 5; // End of line comment`;
   });
 
   // Additional comprehensive tests
-  it('should tokenize array literals correctly', () => {
+  it("should tokenize array literals correctly", () => {
     const source = `[1, 2, 3, "hello", true]`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "Symbol("[")",
@@ -490,13 +492,13 @@ let x = 5; // End of line comment`;
         "BooleanLiteral("true")",
         "Symbol("]")",
       ]
-    `)
+    `);
   });
 
-  it('should tokenize object literals correctly', () => {
+  it("should tokenize object literals correctly", () => {
     const source = `{ name: "John", age: 30, active: true }`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "Symbol("{")",
@@ -520,13 +522,13 @@ let x = 5; // End of line comment`;
         "Whitespace(" ")",
         "Symbol("}")",
       ]
-    `)
+    `);
   });
 
-  it('should tokenize function types correctly', () => {
+  it("should tokenize function types correctly", () => {
     const source = `(x: number, y: string) => boolean`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "Symbol("(")",
@@ -546,13 +548,13 @@ let x = 5; // End of line comment`;
         "Whitespace(" ")",
         "Identifier("boolean")",
       ]
-    `)
+    `);
   });
 
-  it('should tokenize union and intersection types correctly', () => {
+  it("should tokenize union and intersection types correctly", () => {
     const source = `string | number & { id: number }`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "Identifier("string")",
@@ -572,13 +574,13 @@ let x = 5; // End of line comment`;
         "Whitespace(" ")",
         "Symbol("}")",
       ]
-    `)
+    `);
   });
 
-  it('should tokenize template strings correctly', () => {
-    const source = '`Hello ${name}, you are ${age} years old`';
+  it("should tokenize template strings correctly", () => {
+    const source = "`Hello ${name}, you are ${age} years old`";
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "Symbol("\`")",
@@ -604,13 +606,13 @@ let x = 5; // End of line comment`;
         "Identifier("old")",
         "Symbol("\`")",
       ]
-    `)
+    `);
   });
 
-  it('should tokenize complex nested expressions correctly', () => {
+  it("should tokenize complex nested expressions correctly", () => {
     const source = `arr.filter(x => x.value > 0).map(x => x.name)`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "Identifier("arr")",
@@ -641,13 +643,13 @@ let x = 5; // End of line comment`;
         "Identifier("name")",
         "Symbol(")")",
       ]
-    `)
+    `);
   });
 
-  it('should tokenize type definitions correctly', () => {
+  it("should tokenize type definitions correctly", () => {
     const source = `type User = { name: string; age?: number; }`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "type",
@@ -673,15 +675,15 @@ let x = 5; // End of line comment`;
         "Whitespace(" ")",
         "Symbol("}")",
       ]
-    `)
+    `);
   });
 
-  it('should tokenize interface definitions correctly', () => {
+  it("should tokenize interface definitions correctly", () => {
     const source = `interface Comparable<T> {
   compare(other: T): number;
 }`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "interface",
@@ -708,15 +710,15 @@ let x = 5; // End of line comment`;
         "Newline",
         "Symbol("}")",
       ]
-    `)
+    `);
   });
 
-  it('should tokenize effect definitions correctly', () => {
+  it("should tokenize effect definitions correctly", () => {
     const source = `effect Reader<R> {
   ask(): R;
 }`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "effect",
@@ -739,13 +741,13 @@ let x = 5; // End of line comment`;
         "Newline",
         "Symbol("}")",
       ]
-    `)
+    `);
   });
 
-  it('should tokenize range operators correctly', () => {
+  it("should tokenize range operators correctly", () => {
     const source = `0..10 0...10 arr[0..5]`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "IntegerLiteral("0")",
@@ -763,13 +765,13 @@ let x = 5; // End of line comment`;
         "IntegerLiteral("5")",
         "Symbol("]")",
       ]
-    `)
+    `);
   });
 
-  it('should tokenize optional chaining correctly', () => {
+  it("should tokenize optional chaining correctly", () => {
     const source = `obj?.prop?.method?.()`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "Identifier("obj")",
@@ -784,13 +786,13 @@ let x = 5; // End of line comment`;
         "Symbol("(")",
         "Symbol(")")",
       ]
-    `)
+    `);
   });
 
-  it('should tokenize null coalescing correctly', () => {
+  it("should tokenize null coalescing correctly", () => {
     const source = `value ?? defaultValue`;
     const tokens = formatTokens(source);
-    
+
     expect(tokens).toMatchInlineSnapshot(`
       [
         "Identifier("value")",
@@ -800,6 +802,6 @@ let x = 5; // End of line comment`;
         "Whitespace(" ")",
         "Identifier("defaultValue")",
       ]
-    `)
+    `);
   });
-}); 
+});

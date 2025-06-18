@@ -8,6 +8,6 @@ export class WhileStatement {
   constructor(
     readonly condition: Expression,
     readonly body: Block,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

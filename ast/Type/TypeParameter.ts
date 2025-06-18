@@ -7,6 +7,6 @@ export class TypeParameter {
   constructor(
     readonly reference: TypeReference,
     readonly constraints: readonly TypeReference[],
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

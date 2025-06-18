@@ -3,10 +3,10 @@ import { Identifier } from "../../Identifer.ts";
 import { Span } from "../../../tokens/Span.ts";
 import { EffectRecordSignature } from "../../Type/EffectRecordSignature.ts";
 import { Type, TypeParameter } from "../../Type/mod.ts";
-import { ExportKeyword } from "./ExportKeyword.ts";
+import { ExportKeyword } from "../../../tokens/Token.ts";
 
-export class FunctionDeclaration { 
-  readonly kind = 'FunctionDeclaration'
+export class FunctionDeclaration {
+  readonly kind = "FunctionDeclaration";
 
   constructor(
     readonly exportKeyword: ExportKeyword | null,
@@ -16,7 +16,7 @@ export class FunctionDeclaration {
     readonly returnType: Type,
     readonly effects: EffectRecordSignature | null,
     readonly body: Expression,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -27,6 +27,6 @@ export class FunctionParameter {
     readonly name: Identifier,
     readonly type: Type,
     readonly effects: EffectRecordSignature | null,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

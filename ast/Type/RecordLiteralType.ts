@@ -14,6 +14,6 @@ export class RecordLiteralType {
 
   constructor(
     readonly fields: ReadonlyArray<RecordFieldType | SpreadType>,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

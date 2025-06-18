@@ -5,6 +5,6 @@ export class Identifier {
 
   constructor(
     readonly text: string,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

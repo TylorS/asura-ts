@@ -8,7 +8,7 @@ export class TupleLiteralType {
 
   constructor(
     readonly elements: ReadonlyArray<TupleElement>,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -18,6 +18,6 @@ export class TupleElement {
   constructor(
     readonly type: Type | SpreadType,
     readonly name: Identifier | null,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

@@ -6,6 +6,6 @@ export class ExpressionStatement {
 
   constructor(
     readonly expression: Expression,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

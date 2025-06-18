@@ -4,8 +4,8 @@ import { Identifier } from "../Identifer.ts";
 import { EffectRecordSignature } from "../Type/EffectRecordSignature.ts";
 import { Expression } from "./Expression.ts";
 
-export class FunctionExpression { 
-  readonly kind = 'FunctionExpression'
+export class FunctionExpression {
+  readonly kind = "FunctionExpression";
 
   constructor(
     readonly typeParameters: readonly TypeParameter[],
@@ -13,7 +13,7 @@ export class FunctionExpression {
     readonly returnType: Type,
     readonly effects: EffectRecordSignature | null,
     readonly body: Expression,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 
@@ -24,6 +24,6 @@ export class FunctionParameter {
     readonly name: Identifier,
     readonly type: Type,
     readonly effects: EffectRecordSignature | null,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

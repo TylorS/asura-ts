@@ -9,6 +9,6 @@ export class BinaryExpression {
     readonly left: Expression,
     readonly operator: BinaryOperator,
     readonly right: Expression,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

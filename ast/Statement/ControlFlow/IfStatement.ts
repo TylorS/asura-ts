@@ -13,6 +13,6 @@ export class IfStatement {
       readonly statement: Statement;
     }>,
     readonly elseStatement: Statement | null,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

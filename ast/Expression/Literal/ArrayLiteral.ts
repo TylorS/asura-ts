@@ -6,6 +6,6 @@ export class ArrayLiteral {
 
   constructor(
     readonly elements: readonly Expression[],
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

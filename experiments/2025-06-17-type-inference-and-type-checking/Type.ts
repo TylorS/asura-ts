@@ -2,96 +2,100 @@
 // Supporting structural typing, variance, higher-kinded types, row types, effect types, and handler types
 
 export type TypeVariable = {
-  kind: 'TypeVariable'
-  name: string
-  id: number
-  variance?: Variance
-}
+  kind: "TypeVariable";
+  name: string;
+  id: number;
+  variance?: Variance;
+};
 
-export type Variance = 'covariant' | 'contravariant' | 'invariant' | 'bivariant'
+export type Variance =
+  | "covariant"
+  | "contravariant"
+  | "invariant"
+  | "bivariant";
 
 // Higher-kinded types - types that take other types as parameters
 export type TypeConstructor = {
-  kind: 'TypeConstructor'
-  name: string
-  arity: number // number of type parameters it takes
-  parameters: TypeParameter[]
-}
+  kind: "TypeConstructor";
+  name: string;
+  arity: number; // number of type parameters it takes
+  parameters: TypeParameter[];
+};
 
 export type TypeParameter = {
-  name: string
-  variance: Variance
-  constraint?: Type
-}
+  name: string;
+  variance: Variance;
+  constraint?: Type;
+};
 
 // Row types for extensible records and variants
 export type RowType = {
-  kind: 'RowType'
-  fields: Map<string, Type>
-  tail?: Type // for row polymorphism
-}
+  kind: "RowType";
+  fields: Map<string, Type>;
+  tail?: Type; // for row polymorphism
+};
 
 // Effect types for algebraic effects
 export type EffectType = {
-  kind: 'EffectType'
-  name: string
-  operations: Map<string, OperationType>
-}
+  kind: "EffectType";
+  name: string;
+  operations: Map<string, OperationType>;
+};
 
 export type OperationType = {
-  parameters: Type[]
-  returnType: Type
-  resumeType: Type
-}
+  parameters: Type[];
+  returnType: Type;
+  resumeType: Type;
+};
 
 // Handler types for effect handlers
 export type HandlerType = {
-  kind: 'HandlerType'
-  effect: EffectType
-  returnType: Type
-  operations: Map<string, HandlerOperation>
-}
+  kind: "HandlerType";
+  effect: EffectType;
+  returnType: Type;
+  operations: Map<string, HandlerOperation>;
+};
 
 export type HandlerOperation = {
-  parameters: Type[]
-  continuationType: Type
-  resultType: Type
-}
+  parameters: Type[];
+  continuationType: Type;
+  resultType: Type;
+};
 
 // Basic types
 export type PrimitiveType = {
-  kind: 'PrimitiveType'
-  name: 'number' | 'string' | 'boolean' | 'unit'
-}
+  kind: "PrimitiveType";
+  name: "number" | "string" | "boolean" | "unit";
+};
 
 export type FunctionType = {
-  kind: 'FunctionType'
-  parameters: Type[]
-  returnType: Type
-  effects: Type[] // effect row
-}
+  kind: "FunctionType";
+  parameters: Type[];
+  returnType: Type;
+  effects: Type[]; // effect row
+};
 
 export type RecordType = {
-  kind: 'RecordType'
-  row: RowType
-}
+  kind: "RecordType";
+  row: RowType;
+};
 
 export type VariantType = {
-  kind: 'VariantType'
-  row: RowType
-}
+  kind: "VariantType";
+  row: RowType;
+};
 
 export type ApplicationType = {
-  kind: 'ApplicationType'
-  constructor: Type
-  arguments: Type[]
-}
+  kind: "ApplicationType";
+  constructor: Type;
+  arguments: Type[];
+};
 
 export type ForallType = {
-  kind: 'ForallType'
-  variables: TypeVariable[]
-  body: Type
-}
+  kind: "ForallType";
+  variables: TypeVariable[];
+  body: Type;
+};
 
 export type Type =
   | TypeVariable
@@ -103,5 +107,4 @@ export type Type =
   | ApplicationType
   | ForallType
   | EffectType
-  | HandlerType
-  
+  | HandlerType;

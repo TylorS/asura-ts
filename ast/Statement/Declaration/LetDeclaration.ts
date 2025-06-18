@@ -2,7 +2,7 @@ import { Expression } from "../../Expression/mod.ts";
 import { Identifier } from "../../Identifer.ts";
 import { Span } from "../../../tokens/Span.ts";
 import { Type } from "../../Type/mod.ts";
-import { ExportKeyword } from "./ExportKeyword.ts";
+import { ExportKeyword } from "../../../tokens/Token.ts";
 
 export class LetDeclaration {
   readonly kind = "LetDeclaration";
@@ -13,7 +13,7 @@ export class LetDeclaration {
     readonly name: Identifier,
     readonly type: Type | null,
     readonly initializer: Expression | null,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 

@@ -13,6 +13,6 @@ export class ForStatement {
     readonly condition: Expression | null,
     readonly update: Expression | null,
     readonly body: Block,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

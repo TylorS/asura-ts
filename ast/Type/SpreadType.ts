@@ -6,6 +6,6 @@ export class SpreadType {
 
   constructor(
     readonly type: TypeReference,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

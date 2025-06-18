@@ -4,6 +4,6 @@ export class TypeHole {
   readonly kind = "TypeHole";
 
   constructor(
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

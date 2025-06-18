@@ -1,5 +1,5 @@
 import { Identifier } from "../../Identifer.ts";
-import { Span } from "../../Span.ts";
+import { Span } from "../../../tokens/Span.ts";
 import { Type } from "../../Type/mod.ts";
 import { TypeParameter } from "../../Type/TypeParameter.ts";
 import { ExportKeyword } from "./ExportKeyword.ts";

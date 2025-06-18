@@ -1,4 +1,4 @@
-import { Span } from "../../Span.ts";
+import { Span } from "../../../tokens/Span.ts";
 import { Expression } from "../Expression.ts";
 
 export class ArrayLiteral {

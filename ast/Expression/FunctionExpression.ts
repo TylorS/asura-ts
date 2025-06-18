@@ -1,5 +1,5 @@
 import { Type, TypeParameter } from "../Type/mod.ts";
-import { Span } from "../Span.ts";
+import { Span } from "../../tokens/Span.ts";
 import { Identifier } from "../Identifer.ts";
 import { EffectRecordSignature } from "../Type/EffectRecordSignature.ts";
 import { Expression } from "./Expression.ts";

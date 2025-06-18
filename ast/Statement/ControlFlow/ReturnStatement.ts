@@ -1,5 +1,5 @@
 import { Expression } from "../../Expression/mod.ts";
-import { Span } from "../../Span.ts";
+import { Span } from "../../../tokens/Span.ts";
 
 export class ReturnStatement {
   readonly kind = "ReturnStatement";

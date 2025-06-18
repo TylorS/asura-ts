@@ -1,6 +1,6 @@
 import { Expression } from "../../Expression/Expression.ts";
 import { Identifier } from "../../Identifer.ts";
-import { Span } from "../../Span.ts";
+import { Span } from "../../../tokens/Span.ts";
 import { EffectRecordSignature } from "../../Type/EffectRecordSignature.ts";
 import { Type, TypeParameter } from "../../Type/mod.ts";
 import { ExportKeyword } from "./ExportKeyword.ts";

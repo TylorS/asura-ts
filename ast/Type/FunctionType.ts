@@ -1,4 +1,4 @@
-import { Span } from "../Span.ts";
+import { Span } from "../../tokens/Span.ts";
 import { Type } from "./Type.ts";
 import { TypeParameter } from "./TypeParameter.ts";
 import { Identifier } from "../Identifer.ts";

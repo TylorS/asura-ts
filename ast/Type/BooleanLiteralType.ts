@@ -1,4 +1,4 @@
-import { Span } from "../Span.ts";
+import { Span } from "../../tokens/Span.ts";
 
 export class BooleanLiteralType {
   readonly kind = "BooleanLiteralType";

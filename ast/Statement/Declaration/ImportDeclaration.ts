@@ -1,6 +1,6 @@
 import { StringLiteral } from "../../Expression/Literal/StringLiteral.ts";
 import { Identifier } from "../../Identifer.ts";
-import { Span } from "../../Span.ts";
+import { Span } from "../../../tokens/Span.ts";
 
 export class ImportDeclaration {
   readonly kind = "ImportDeclaration";

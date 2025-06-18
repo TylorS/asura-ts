@@ -1,4 +1,4 @@
-import { Span } from "../Span.ts";
+import { Span } from "../../tokens/Span.ts";
 import { TypeReference } from "./TypeReference.ts";
 
 export class TypeParameter {

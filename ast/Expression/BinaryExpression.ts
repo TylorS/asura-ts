@@ -1,5 +1,5 @@
 import { Expression } from "./Expression.ts";
-import { Span } from "../Span.ts";
+import { Span } from "../../tokens/Span.ts";
 import { BinaryOperator } from "./Operator.ts";
 
 export class BinaryExpression {

@@ -1,5 +1,5 @@
 import { Identifier } from "../Identifer.ts";
-import { Span } from "../Span.ts";
+import { Span } from "../../tokens/Span.ts";
 import { SpreadType } from "./SpreadType.ts";
 import { Type } from "./Type.ts";
 

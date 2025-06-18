@@ -1,6 +1,6 @@
 import { Expression } from "../../Expression/mod.ts";
 import { Identifier } from "../../Identifer.ts";
-import { Span } from "../../Span.ts";
+import { Span } from "../../../tokens/Span.ts";
 import { Type } from "../../Type/mod.ts";
 import { ExportKeyword } from "./ExportKeyword.ts";
 

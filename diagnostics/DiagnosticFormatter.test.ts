@@ -67,7 +67,7 @@ describe('DiagnosticFormatter', () => {
       DiagnosticSeverity.WARNING,
       DiagnosticCode.MISSING_SEMICOLON,
       'Missing semicolon',
-      createSpan(1, 19, 1, 19), // End of second line
+      createSpan(1, 21, 1, 21), // End of second line
       'test.asura'
     ).withFix('Add semicolon', ';');
 
@@ -75,10 +75,10 @@ describe('DiagnosticFormatter', () => {
 
     expect(formatted).toMatchInlineSnapshot(`
       "⚠ WARNING[P003]: Missing semicolon
-        --> test.asura:2:20
+        --> test.asura:2:22
          1 | let x = 42;
        > 2 | let y = "hello world"
-                                ^
+                                  ^
          3 | function add(a, b) {
 
         help: Add semicolon
@@ -92,7 +92,7 @@ describe('DiagnosticFormatter', () => {
       DiagnosticSeverity.ERROR,
       DiagnosticCode.TYPE_MISMATCH,
       'Type mismatch: expected Int, found String',
-      createSpan(6, 19, 6, 20), // Points to "y" in last line: "let result = add(x, y);"
+      createSpan(6, 20, 6, 21), // Points to "y" in last line: "let result = add(x, y);"
       'test.asura'
     )
     .withFix('Cast to Int', 'parseInt(y)')
@@ -102,10 +102,10 @@ describe('DiagnosticFormatter', () => {
 
         expect(formatted).toMatchInlineSnapshot(`
           "✗ ERROR[S002]: Type mismatch: expected Int, found String
-            --> test.asura:7:20
+            --> test.asura:7:21
              6 | 
            > 7 | let result = add(x, y);
-                                    ^
+                                     ^
 
             help: Cast to Int
                   Replace with: "parseInt(y)"
@@ -120,7 +120,7 @@ describe('DiagnosticFormatter', () => {
       DiagnosticSeverity.ERROR,
       DiagnosticCode.UNDEFINED_IDENTIFIER,
       'Undefined variable "z"',
-      createSpan(6, 19, 6, 20), // Points to "y" in last line, pretending it's "z"
+      createSpan(6, 20, 6, 21), // Points to "y" in last line, pretending it's "z"
       'test.asura'
     )
     .withRelatedInfo(
@@ -138,10 +138,10 @@ describe('DiagnosticFormatter', () => {
 
         expect(formatted).toMatchInlineSnapshot(`
           "✗ ERROR[S001]: Undefined variable "z"
-            --> test.asura:7:20
+            --> test.asura:7:21
              6 | 
            > 7 | let result = add(x, y);
-                                    ^
+                                     ^
 
             note: Variable "x" declared here
                   --> test.asura:1:5
@@ -156,7 +156,7 @@ describe('DiagnosticFormatter', () => {
       DiagnosticSeverity.ERROR,
       DiagnosticCode.UNCLOSED_DELIMITER,
       'Unclosed function body',
-      createSpan(2, 20, 4, 1), // From opening brace to closing brace
+      createSpan(2, 19, 4, 1), // From opening brace to closing brace
       'test.asura'
     );
 
@@ -164,10 +164,10 @@ describe('DiagnosticFormatter', () => {
 
     expect(formatted).toMatchInlineSnapshot(`
       "✗ ERROR[P004]: Unclosed function body
-        --> test.asura:3:21
+        --> test.asura:3:20
          2 | let y = "hello world"
        > 3 | function add(a, b) {
-                                 ^
+                                ^
        > 4 |   return a + b;
              ^^^^^^^^^^^^^^^
        > 5 | }
@@ -437,7 +437,7 @@ describe('DiagnosticFormatter - Edge Cases', () => {
       DiagnosticSeverity.WARNING,
       DiagnosticCode.INSERTED_TOKEN,
       'Inserted missing token',
-      createSpan(0, 7, 0, 7), // Zero-width span
+      createSpan(0, 10, 0, 10), // Zero-width span
       'zero.asura'
     );
 
@@ -445,9 +445,9 @@ describe('DiagnosticFormatter - Edge Cases', () => {
 
     expect(formatted).toMatchInlineSnapshot(`
       "⚠ WARNING[P101]: Inserted missing token
-        --> zero.asura:1:8
+        --> zero.asura:1:11
        > 1 | let x = 42;
-                    ^
+                       ^
       "
     `);
   });
@@ -476,7 +476,7 @@ function broken(a, b {
         DiagnosticSeverity.ERROR,
         DiagnosticCode.UNCLOSED_DELIMITER,
         'Missing closing parenthesis',
-        createSpan(2, 18, 2, 19),
+        createSpan(2, 15, 2, 15),
         'broken.asura'
       ).withFix('Add closing parenthesis', ')'),
       
@@ -515,10 +515,10 @@ function broken(a, b {
 
 
       ✗ ERROR[P004]: Missing closing parenthesis
-        --> broken.asura:3:19
+        --> broken.asura:3:16
          2 | let y = "hello"
        > 3 | function broken(a, b {
-                               ^
+                            ^
          4 |   return unknown_var;
 
         help: Add closing parenthesis

@@ -7,7 +7,8 @@
   "imports": {
     "@std/assert": "jsr:@std/assert@1",
     "vitest": "npm:vitest@^3.2.4",
-    "@vitest/ui": "npm:@vitest/ui@^3.2.4"
+    "@vitest/ui": "npm:@vitest/ui@^3.2.4",
+    "effect": "npm:effect@^3.16.0"
   },
   "compilerOptions": {
     "types": ["npm:@types/node"]

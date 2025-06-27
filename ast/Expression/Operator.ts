@@ -8,10 +8,16 @@ export enum Operator {
   Modulus = "%",
   Exponent = "**",
   Equal = "==",
+  NotEqual = "!=",
+  LessThan = "<",
+  LessThanOrEqual = "<=",
+  GreaterThan = ">",
+  GreaterThanOrEqual = ">=",
+  And = "&&",
+  Or = "||",
 }
 
 export class BinaryOperator {
   readonly kind = "BinaryOperator";
-
   constructor(readonly operator: Operator, readonly span: Span) {}
 }

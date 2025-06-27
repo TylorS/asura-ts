@@ -406,7 +406,7 @@ export class TypePrinter {
           })
           .join(";\n");
 
-        return `interface ${type.effect.name}Handler {\n${ops}\n  return: (value: any) => ${
+        return `interface ${type.effect.name}Handler {\n${ops}\n  return: (value: ${this.print(type.returnType, depth + 1)}) => ${
           this.print(type.returnType, depth + 1)
         }\n}`;
       }

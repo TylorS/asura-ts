@@ -26,6 +26,13 @@ export type Constraint =
   | { kind: "RowExtension"; base: Type; extension: Type; result: Type }
   | { kind: "EffectSubsumption"; required: Type[]; provided: Type[] };
 
+export interface TypeConstraintError {
+  message: string;
+  constraint: Constraint;
+  left?: Type;
+  right?: Type;
+}
+
 // Type-checking context
 export class TypeChecker {
   private nextTypeId = 0;
@@ -457,35 +464,49 @@ export class TypeChecker {
     this.constraints.push(constraint);
   }
 
-  // Solve constraints (simplified constraint solver)
-  private solve(): boolean {
-    let changed = true;
-    while (changed) {
-      changed = false;
+  /**
+   * Public constraint solver. Returns a list of errors for unsatisfied constraints.
+   */
+  public solveConstraints(): TypeConstraintError[] {
+    const errors: TypeConstraintError[] = [];
+    for (const constraint of this.constraints) {
+      switch (constraint.kind) {
+        case "Equality": {
+          const success = this.unify(constraint.left, constraint.right);
 
-      for (const constraint of this.constraints) {
-        switch (constraint.kind) {
-          case "Equality":
-            if (this.unify(constraint.left, constraint.right)) {
-              changed = true;
-            }
-            break;
-
-          case "Subtype":
-            if (
-              !this.isSubtype(
-                constraint.left,
-                constraint.right,
-                constraint.variance,
-              )
-            ) {
-              return false;
-            }
-            break;
+          if (!success) {
+            errors.push({
+              message: `Type equality failed`,
+              constraint,
+              left: constraint.left,
+              right: constraint.right,
+            });
+          }
+          break;
+        }
+        case "Subtype": {
+          const success = this.isSubtype(constraint.left, constraint.right, constraint.variance);
+          if (!success) {
+            errors.push({
+              message: `Type is not a subtype as required by constraint`,
+              constraint,
+              left: constraint.left,
+              right: constraint.right,
+            });
+          }
+          break;
+        }
+        case "RowExtension": {
+          // Not implemented: always succeed for now
+          break;
+        }
+        case "EffectSubsumption": {
+          // Not implemented: always succeed for now
+          break;
         }
       }
     }
-    return true;
+    return errors;
   }
 
   protected unify(left: Type, right: Type): boolean {

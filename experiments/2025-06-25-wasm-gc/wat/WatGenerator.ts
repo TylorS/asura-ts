@@ -19,10 +19,6 @@ export class WatGenerator {
     this.writeLine("(module");
     this.indent();
     
-    if (this.module.name) {
-      this.writeLine(`(name "${this.module.name}")`);
-    }
-    
     // Write imports
     for (const imp of this.module.imports) {
       this.writeImport(imp);
@@ -66,21 +62,18 @@ export class WatGenerator {
   }
 
   private writeMemory(memory: types.WatMemory): void {
-    const name = memory.name ? `(name "${memory.name}")` : "";
     const max = memory.max ? ` ${memory.max}` : "";
-    this.writeLine(`(memory ${name} ${memory.min}${max})`);
+    this.writeLine(`(memory ${memory.min}${max})`);
   }
 
   private writeTable(table: types.WatTable): void {
-    const name = table.name ? `(name "${table.name}")` : "";
     const max = table.max ? ` ${table.max}` : "";
-    this.writeLine(`(table ${name} ${table.min}${max} ${table.elementType})`);
+    this.writeLine(`(table ${table.min}${max} ${table.elementType})`);
   }
 
   private writeGlobal(global: types.WatGlobal): void {
-    const name = global.name ? `(name "${global.name}")` : "";
     const mut = global.mutable ? " (mut " : " (";
-    this.writeLine(`(global ${name}${mut}${global.type}))`);
+    this.writeLine(`(global${mut}${global.type}))`);
     // TODO: Add init expression
   }
 
@@ -88,17 +81,13 @@ export class WatGenerator {
     this.writeLine("(func");
     this.indent();
     
-    if (func.name) {
-      this.writeLine(`(name "${func.name}")`);
-    }
-    
     // Write parameters
     if (func.params.length > 0) {
       this.writeLine("(param");
       this.indent();
       for (const param of func.params) {
-        const name = param.name ? `"${param.name}" ` : "";
-        this.writeLine(`${name}${param.type}`);
+        // Emit only the type for params
+        this.writeLine(`${param.type}`);
       }
       this.dedent();
       this.writeLine(")");
@@ -115,13 +104,12 @@ export class WatGenerator {
       this.writeLine(")");
     }
     
-    // Write locals
+    // Write locals (types only, no names)
     if (func.locals.length > 0) {
       this.writeLine("(local");
       this.indent();
       for (const local of func.locals) {
-        const name = local.name ? `"${local.name}" ` : "";
-        this.writeLine(`${name}${local.type}`);
+        this.writeLine(`${local.type}`);
       }
       this.dedent();
       this.writeLine(")");
@@ -130,7 +118,7 @@ export class WatGenerator {
     // Write body
     if (func.body.length > 0) {
       for (const instruction of func.body) {
-        this.writeInstruction(instruction);
+        this.writeInstructionIndexed(instruction, func);
       }
     }
     
@@ -138,7 +126,28 @@ export class WatGenerator {
     this.writeLine(")");
   }
 
-  private writeInstruction(instruction: { opcode: string; operands?: (string | number)[] }): void {
+  // Helper to map local/param names to indices for local.get/set
+  private getLocalIndex(name: string | undefined, func: types.WatFunction): number | undefined {
+    if (!name) return undefined;
+    // Params first
+    const paramIdx = func.params.findIndex(p => p.name === name);
+    if (paramIdx !== -1) return paramIdx;
+    // Locals after params
+    const localIdx = func.locals.findIndex(l => l.name === name);
+    if (localIdx !== -1) return func.params.length + localIdx;
+    return undefined;
+  }
+
+  private writeInstructionIndexed(instruction: { opcode: string; operands?: (string | number)[] }, func: types.WatFunction): void {
+    // Patch local.get/set to use indices
+    if ((instruction.opcode === "local.get" || instruction.opcode === "local.set") && instruction.operands && typeof instruction.operands[0] === "string") {
+      const idx = this.getLocalIndex(instruction.operands[0] as string, func);
+      if (idx !== undefined) {
+        this.writeLine(`${instruction.opcode} ${idx}`);
+        return;
+      }
+    }
+    // Default: emit as before
     const operands = instruction.operands?.join(" ") || "";
     this.writeLine(`${instruction.opcode}${operands ? ` ${operands}` : ""}`);
   }

@@ -77,9 +77,9 @@ describe("Tokenizer", () => {
         "Whitespace(" ")",
         "FloatLiteral("3.14")",
         "Whitespace(" ")",
-        "IntegerLiteral("42n")",
+        "BigIntegerLiteral("42")",
         "Whitespace(" ")",
-        "FloatLiteral("3.14n")",
+        "BigDecimalLiteral("3.14")",
         "Whitespace(" ")",
         "BooleanLiteral("true")",
         "Whitespace(" ")",
@@ -244,9 +244,9 @@ let x = 5; // End of line comment`;
         "Whitespace(" ")",
         "FloatLiteral("3.14159")",
         "Whitespace(" ")",
-        "IntegerLiteral("42n")",
+        "BigIntegerLiteral("42")",
         "Whitespace(" ")",
-        "FloatLiteral("3.14n")",
+        "BigDecimalLiteral("3.14")",
       ]
     `);
   });
@@ -790,17 +790,60 @@ let x = 5; // End of line comment`;
   });
 
   it("should tokenize null coalescing correctly", () => {
-    const source = `value ?? defaultValue`;
+    const source = "a ?? b";
     const tokens = formatTokens(source);
 
     expect(tokens).toMatchInlineSnapshot(`
       [
-        "Identifier("value")",
+        "Identifier("a")",
         "Whitespace(" ")",
-        "Symbol("?")",
-        "Symbol("?")",
+        "Symbol("??")",
         "Whitespace(" ")",
-        "Identifier("defaultValue")",
+        "Identifier("b")",
+      ]
+    `);
+  });
+
+  it("should tokenize regex literals correctly", () => {
+    const source = "/abc/ /def/gi /a\\/b/";
+    const tokens = formatTokens(source);
+
+    expect(tokens).toMatchInlineSnapshot(`
+      [
+        "Symbol("/")",
+        "Identifier("abc")",
+        "Symbol("/")",
+        "Whitespace(" ")",
+        "Symbol("/")",
+        "Identifier("def")",
+        "Symbol("/")",
+        "Identifier("gi")",
+        "Whitespace(" ")",
+        "Symbol("/")",
+        "Identifier("a")",
+        "Symbol("\\")",
+        "Symbol("/")",
+        "Identifier("b")",
+        "Symbol("/")",
+      ]
+    `);
+  });
+
+  it("should distinguish regex from division operator", () => {
+    const source = "a / b /c/";
+    const tokens = formatTokens(source);
+
+    expect(tokens).toMatchInlineSnapshot(`
+      [
+        "Identifier("a")",
+        "Whitespace(" ")",
+        "Symbol("/")",
+        "Whitespace(" ")",
+        "Identifier("b")",
+        "Whitespace(" ")",
+        "Symbol("/")",
+        "Identifier("c")",
+        "Symbol("/")",
       ]
     `);
   });

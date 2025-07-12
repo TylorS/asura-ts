@@ -24,10 +24,13 @@ export const SYMBOLS = {
   Assign: "=",
   Arrow: "=>",
 
+  // Logical Operators
+  NullCoalescing: "??",
+
   // Type Operators
   Union: "|",
   Intersection: "&",
-  Spread: "...",
+  Spread: "...", // Also used for array/rest spread
   Range: "..",
 
   // Punctuation - Brackets
@@ -48,6 +51,7 @@ export const SYMBOLS = {
   Underscore: "_", // Wildcard/hole
   Exclamation: "!", // Never type
   Question: "?", // Optional (if needed)
+  Backslash: "\\", // Escape character
 
   // String Delimiters
   DoubleQuote: '"',
@@ -61,6 +65,7 @@ export const SYMBOLS = {
   SingleLineComment: "//",
   MultiLineCommentStart: "/*",
   MultiLineCommentEnd: "*/",
+
 
   // Whitespace
   Space: " ",

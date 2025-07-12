@@ -7,6 +7,8 @@ import {
   SymbolValue,
 } from "./Symbols.ts";
 import {
+  BigDecimalLiteral,
+  BigIntegerLiteral,
   BooleanLiteral,
   BreakKeyword,
   Comment,
@@ -267,8 +269,7 @@ export class IncrementalTokenizer {
 
     // BigInt suffix
     if (char === "n") {
-      this.currentBuffer += char;
-      const token = this.createIntegerToken();
+      const token = this.createBigIntegerToken();
       this.resetToStart();
       return token;
     }
@@ -317,8 +318,7 @@ export class IncrementalTokenizer {
 
     // BigDecimal suffix
     if (char === "n") {
-      this.currentBuffer += char;
-      const token = this.createFloatToken();
+      const token = this.createBigDecimalToken();
       this.resetToStart();
       return token;
     }
@@ -544,6 +544,22 @@ export class IncrementalTokenizer {
 
   private createFloatToken(): Token {
     return new FloatLiteral(this.currentBuffer, this.createSpan());
+  }
+
+  private createBigIntegerToken(): Token {
+    // Remove the 'n' suffix
+    return new BigIntegerLiteral(
+      this.currentBuffer,
+      this.createSpan(),
+    );
+  }
+
+  private createBigDecimalToken(): Token {
+    // Remove the 'n' suffix
+    return new BigDecimalLiteral(
+      this.currentBuffer,
+      this.createSpan(),
+    );
   }
 
   private createStringToken(): Token {

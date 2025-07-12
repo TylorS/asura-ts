@@ -1,0 +1,11 @@
+package test-package;
+
+interface main {
+  main() -> f64;
+}
+
+world asura-world {
+  export {
+    main,
+  };
+}

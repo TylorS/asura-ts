@@ -10,5 +10,9 @@ export class SpanLocation {
     readonly line: number,
     readonly column: number,
     readonly character: number,
-  ) {}
+  ) { }
+
+  toString(): string {
+    return `${this.line}:${this.column}`;
+  }
 }

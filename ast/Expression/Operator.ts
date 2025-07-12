@@ -15,9 +15,13 @@ export enum Operator {
   GreaterThanOrEqual = ">=",
   And = "&&",
   Or = "||",
+
+  // Unary Operators
+  Negate = "-",
+  Not = "!",
 }
 
-export class BinaryOperator {
-  readonly kind = "BinaryOperator";
+export class OperatorNode {
+  readonly kind = "Operator";
   constructor(readonly operator: Operator, readonly span: Span) {}
 }

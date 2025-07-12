@@ -3,6 +3,8 @@ import { SymbolKind, SYMBOLS } from "./Symbols.ts";
 
 export type Token =
   | AsKeyword
+  | BigIntegerLiteral
+  | BigDecimalLiteral
   | BooleanLiteral
   | BreakKeyword
   | Comment
@@ -35,7 +37,7 @@ export type Token =
   | WithKeyword;
 
 export abstract class Spanned<Kind extends string> {
-  constructor(readonly kind: Kind, readonly span: Span) {}
+  constructor(readonly kind: Kind, readonly span: Span) { }
 }
 
 export abstract class Keyword<T extends string> extends Spanned<T> {
@@ -193,6 +195,18 @@ export class IntegerLiteral extends Spanned<"IntegerLiteral"> {
 export class FloatLiteral extends Spanned<"FloatLiteral"> {
   constructor(readonly text: string, span: Span) {
     super("FloatLiteral", span);
+  }
+}
+
+export class BigIntegerLiteral extends Spanned<"BigIntegerLiteral"> {
+  constructor(readonly text: string, span: Span) {
+    super("BigIntegerLiteral", span);
+  }
+}
+
+export class BigDecimalLiteral extends Spanned<"BigDecimalLiteral"> {
+  constructor(readonly text: string, span: Span) {
+    super("BigDecimalLiteral", span);
   }
 }
 

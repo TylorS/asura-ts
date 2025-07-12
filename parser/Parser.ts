@@ -1,190 +1,244 @@
-import type { Token } from "../tokens/Token.ts";
-import * as AST from "../ast/mod.ts";
+import {
+  Diagnostic,
+  DiagnosticCode,
+  DiagnosticCollection,
+  DiagnosticFix,
+  DiagnosticRelatedInformation,
+  DiagnosticSeverity,
+} from "../diagnostics/mod.ts";
+import { Span } from "../tokens/Span.ts";
+import { Token } from "../tokens/Token.ts";
 
-// --- ParseResult ---
+export class ParserContext {
+  private position: number = 0;
 
-export interface ParseError {
-  message: string;
-  position: number;
-}
+  constructor(
+    readonly fileName: string,
+    readonly tokens: Token[],
+    readonly diagnostics: DiagnosticCollection,
+  ) {}
 
-export interface ParseResult<T> {
-  success: boolean;
-  value?: T;
-  errors: ParseError[];
-  consumed: number;
-  recovered?: boolean;
-}
-
-// --- TokenStream ---
-
-export class TokenStream {
-  private position = 0;
-  constructor(private tokens: Token[]) {}
-
-  peek(offset = 0): Token | null {
-    const idx = this.position + offset;
-    return idx < this.tokens.length ? this.tokens[idx] : null;
+  // Basic token navigation
+  peek(offset: number = 0): Token {
+    return this.tokens[this.position + offset];
   }
 
-  consume(): Token | null {
-    if (this.position < this.tokens.length) {
-      return this.tokens[this.position++];
+  span(): Span {
+    const token = this.peek();
+    if (token !== undefined) {
+      return token.span;
+    }
+
+    throw new Error("No token to get span from");
+  }
+
+  consume(): Token {
+    if (this.position >= this.tokens.length) {
+      throw new Error("Attempted to consume past end of tokens");
+    }
+    return this.tokens[this.position++];
+  }
+
+  consumeIf<B extends Token>(
+    predicate: (token: Token) => token is B,
+  ): B | null {
+    const token = this.peek();
+    if (token && predicate(token)) {
+      return this.consume() as B;
     }
     return null;
   }
 
-  mark(): number {
+  isAtEnd(): boolean {
+    return this.position >= this.tokens.length;
+  }
+
+  // Diagnostic helpers
+  addDiagnostic(
+    parseError: ParseError,
+  ): Diagnostic {
+    const diagnostic = new Diagnostic(
+      parseError.severity,
+      parseError.code,
+      parseError.message,
+      parseError.span,
+      this.fileName,
+      parseError.fixes,
+      parseError.relatedInformation,
+    );
+
+    this.diagnostics.add(diagnostic);
+
+    return diagnostic;
+  }
+
+  // Token matching utilities
+  expectToken<B extends Token>(
+    predicate: (token: Token) => token is B,
+    expectedMessage: string,
+  ): B {
+    const token = this.peek();
+    if (!token) {
+      const diagnostic = this.addDiagnostic(
+        ParseError.error(
+          DiagnosticCode.PREMATURE_EOF,
+          `Unexpected end of file, expected ${expectedMessage}`,
+          this.tokens[this.tokens.length - 1].span,
+        ),
+      );
+      throw new Error(`Parse error: ${diagnostic.message}`);
+    }
+
+    if (predicate(token)) {
+      return this.consume() as B;
+    }
+
+    const diagnostic = this.addDiagnostic(
+      ParseError.error(
+        DiagnosticCode.UNEXPECTED_TOKEN,
+        `Expected ${expectedMessage}, got ${token.kind}`,
+        token.span,
+      ),
+    );
+
+    throw new Error(`Parse error: ${diagnostic.message}`);
+  }
+
+  getPosition(): number {
     return this.position;
   }
 
-  restore(pos: number) {
-    this.position = pos;
-  }
-
-  hasMore(): boolean {
-    return this.position < this.tokens.length;
+  getTokensRemaining(): number {
+    return this.tokens.length - this.position;
   }
 }
-
-// --- Parser interface ---
 
 export interface Parser<T> {
-  parse(tokens: TokenStream): ParseResult<T>;
-  canParse?(tokens: TokenStream): boolean;
+  parse(context: ParserContext): ParseResult<T>;
 }
 
-// --- Combinators ---
+export type ParseResult<T> =
+  | ParseSuccess<T>
+  | ParseFailure
+  | ParseErrorRecovery;
 
-export function seq<A, B>(a: Parser<A>, b: Parser<B>): Parser<[A, B]> {
-  return {
-    parse(tokens) {
-      const start = tokens.mark();
-      const ra = a.parse(tokens);
-      if (!ra.success) return { ...ra, consumed: tokens.mark() - start };
-      const rb = b.parse(tokens);
-      if (!rb.success) {
-        tokens.restore(start);
-        return { ...rb, consumed: 0 };
-      }
-      return {
-        success: true,
-        value: [ra.value!, rb.value!] as [A, B],
-        errors: [...ra.errors, ...rb.errors],
-        consumed: tokens.mark() - start,
-      };
-    }
-  };
+export class ParseSuccess<T> {
+  readonly type = "success";
+  constructor(
+    readonly value: T,
+  ) {}
 }
 
-export function alt<A, B>(a: Parser<A>, b: Parser<B>): Parser<A | B> {
-  return {
-    parse(tokens) {
-      const start = tokens.mark();
-      const ra = a.parse(tokens);
-      if (ra.success) return ra;
-      tokens.restore(start);
-      const rb = b.parse(tokens);
-      if (rb.success) return rb;
-      return {
-        success: false,
-        errors: [...ra.errors, ...rb.errors],
-        consumed: 0,
-      };
-    }
-  };
+export class ParseFailure {
+  readonly type = "failure";
+  constructor(
+    readonly errors: ReadonlyArray<ParseError>,
+  ) {}
 }
 
-export function many<A>(p: Parser<A>): Parser<A[]> {
-  return {
-    parse(tokens) {
-      const results: A[] = [];
-      const errors: ParseError[] = [];
-      const start = tokens.mark();
-      while (true) {
-        const r = p.parse(tokens);
-        if (!r.success) break;
-        results.push(r.value!);
-        errors.push(...r.errors);
-      }
-      return {
-        success: true,
-        value: results,
-        errors,
-        consumed: tokens.mark() - start,
-      };
-    }
-  };
-}
+export class ParseError {
+  constructor(
+    readonly severity: DiagnosticSeverity,
+    readonly code: DiagnosticCode,
+    readonly message: string,
+    readonly span: Span,
+    readonly fixes: ReadonlyArray<DiagnosticFix>,
+    readonly relatedInformation: ReadonlyArray<DiagnosticRelatedInformation>,
+  ) {}
 
-// --- Error Recovery (Panic Mode) ---
-
-export function recoverUntil(sync: (t: Token | null) => boolean): Parser<null> {
-  return {
-    parse(tokens) {
-      const errors: ParseError[] = [];
-      let consumed = 0;
-      while (tokens.hasMore() && !sync(tokens.peek())) {
-        tokens.consume();
-        consumed++;
-      }
-      errors.push({
-        message: "Error recovery: skipped tokens until sync point.",
-        position: tokens.mark(),
-      });
-      return { success: true, value: null, errors, consumed, recovered: true };
-    }
-  };
-}
-
-// --- Example: Identifier or Literal Expression Parser ---
-
-export const identifierParser: Parser<AST.Identifier> = {
-  parse(tokens) {
-    const t = tokens.peek();
-    if (t && t.kind === "Identifier") {
-      tokens.consume();
-      return { success: true, value: new AST.Identifier(t.text, t.span), errors: [], consumed: 1 };
-    }
-    return {
-      success: false,
-      errors: [{ message: "Expected identifier", position: tokens.mark() }],
-      consumed: 0,
-    };
+  static error(
+    code: DiagnosticCode,
+    message: string,
+    span: Span,
+    fixes: ReadonlyArray<DiagnosticFix> = [],
+    relatedInformation: ReadonlyArray<DiagnosticRelatedInformation> = [],
+  ): ParseError {
+    return new ParseError(
+      DiagnosticSeverity.ERROR,
+      code,
+      message,
+      span,
+      fixes,
+      relatedInformation,
+    );
   }
-};
 
-export const literalParser: Parser<AST.Literal> = {
-  parse(tokens) {
-    const t = tokens.peek();
-    if (t && t.kind === "IntegerLiteral") {
-      tokens.consume();
-      return { success: true, value: new AST.IntegerLiteral(Number(t.text), t.span), errors: [], consumed: 1 };
-    }
-    if (t && t.kind === "FloatLiteral") {
-      tokens.consume();
-      return { success: true, value: new AST.FloatLiteral(Number(t.text), t.span), errors: [], consumed: 1 };
-    }
-    if (t && t.kind === "StringLiteral") {
-      tokens.consume();
-      return { success: true, value: new AST.StringLiteral(t.text, t.span), errors: [], consumed: 1 };
-    }
-    if (t && t.kind === "BooleanLiteral") {
-      tokens.consume();
-      return { success: true, value: new AST.BooleanLiteral(t.text === "true", t.span), errors: [], consumed: 1 };
-    }
-    return {
-      success: false,
-      errors: [{ message: "Expected literal", position: tokens.mark() }],
-      consumed: 0,
-    };
+  static warning(
+    code: DiagnosticCode,
+    message: string,
+    span: Span,
+    fixes: ReadonlyArray<DiagnosticFix> = [],
+    relatedInformation: ReadonlyArray<DiagnosticRelatedInformation> = [],
+  ): ParseError {
+    return new ParseError(
+      DiagnosticSeverity.WARNING,
+      code,
+      message,
+      span,
+      fixes,
+      relatedInformation,
+    );
   }
-};
 
-// --- Example: Expression Parser (Identifier | Literal) ---
+  static info(
+    code: DiagnosticCode,
+    message: string,
+    span: Span,
+    fixes: ReadonlyArray<DiagnosticFix> = [],
+    relatedInformation: ReadonlyArray<DiagnosticRelatedInformation> = [],
+  ): ParseError {
+    return new ParseError(
+      DiagnosticSeverity.INFO,
+      code,
+      message,
+      span,
+      fixes,
+      relatedInformation,
+    );
+  }
 
-export const expressionParser: Parser<AST.Expression> = alt(identifierParser, literalParser);
+  static hint(
+    code: DiagnosticCode,
+    message: string,
+    span: Span,
+    fixes: ReadonlyArray<DiagnosticFix> = [],
+    relatedInformation: ReadonlyArray<DiagnosticRelatedInformation> = [],
+  ): ParseError {
+    return new ParseError(
+      DiagnosticSeverity.HINT,
+      code,
+      message,
+      span,
+      fixes,
+      relatedInformation,
+    );
+  }
+}
 
-// --- Usage Example ---
-// const stream = new TokenStream(tokens);
-// const result = expressionParser.parse(stream);
+export class ParseErrorRecovery {
+  readonly type = "error-recovery";
+  constructor(
+    readonly strategies: ReadonlyArray<ErrorRecoveryStrategy>,
+  ) {}
+}
+
+export type ErrorRecoveryStrategy =
+  | SkipTokensStrategy
+  | InsertTokenStrategy
+  | ReplaceTokenStrategy;
+
+export interface SkipTokensStrategy {
+  readonly type: "skip-until-tokens";
+  readonly until: ReadonlyArray<{ readonly kind: Token["kind"], readonly consume: boolean }>;
+}
+
+export interface InsertTokenStrategy {
+  readonly type: "insert-token";
+  readonly token: Token;
+  readonly position: number
+}
+
+export interface ReplaceTokenStrategy {
+  readonly type: "replace-token";
+  readonly token: Token;
+}

@@ -16,7 +16,7 @@ export class ParserContext {
     readonly fileName: string,
     readonly tokens: Token[],
     readonly diagnostics: DiagnosticCollection,
-  ) {}
+  ) { }
 
   // Basic token navigation
   peek(offset: number = 0): Token {
@@ -126,14 +126,14 @@ export class ParseSuccess<T> {
   readonly type = "success";
   constructor(
     readonly value: T,
-  ) {}
+  ) { }
 }
 
 export class ParseFailure {
   readonly type = "failure";
   constructor(
     readonly errors: ReadonlyArray<ParseError>,
-  ) {}
+  ) { }
 }
 
 export class ParseError {
@@ -144,7 +144,29 @@ export class ParseError {
     readonly span: Span,
     readonly fixes: ReadonlyArray<DiagnosticFix>,
     readonly relatedInformation: ReadonlyArray<DiagnosticRelatedInformation>,
-  ) {}
+  ) { }
+
+  addFix(fix: DiagnosticFix): ParseError {
+    return new ParseError(
+      this.severity,
+      this.code,
+      this.message,
+      this.span,
+      [...this.fixes, fix],
+      this.relatedInformation,
+    );
+  }
+
+  addRelatedInformation(relatedInformation: DiagnosticRelatedInformation): ParseError {
+    return new ParseError(
+      this.severity,
+      this.code,
+      this.message,
+      this.span,
+      this.fixes,
+      [...this.relatedInformation, relatedInformation],
+    );
+  }
 
   static error(
     code: DiagnosticCode,
@@ -219,7 +241,7 @@ export class ParseErrorRecovery {
   readonly type = "error-recovery";
   constructor(
     readonly strategies: ReadonlyArray<ErrorRecoveryStrategy>,
-  ) {}
+  ) { }
 }
 
 export type ErrorRecoveryStrategy =

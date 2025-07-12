@@ -30,6 +30,7 @@ import {
   MatchKeyword,
   MultiLineComment,
   Newline,
+  OfKeyword,
   ReturnKeyword,
   StringLiteral,
   Symbol,
@@ -56,6 +57,7 @@ const KEYWORDS = {
   "for": ForKeyword,
   "if": IfKeyword,
   "in": InKeyword,
+  "of": OfKeyword,
   "return": ReturnKeyword,
   "while": WhileKeyword,
   "handle": HandleKeyword,
@@ -524,7 +526,7 @@ export class IncrementalTokenizer {
 
     // Check for boolean literals first
     if (this.currentBuffer === "true" || this.currentBuffer === "false") {
-      return new BooleanLiteral(this.currentBuffer as "true" | "false", span);
+      return new BooleanLiteral(this.currentBuffer, span);
     }
 
     if (Object.hasOwn(KEYWORDS, this.currentBuffer)) {

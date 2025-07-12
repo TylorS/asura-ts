@@ -25,6 +25,7 @@ export type Token =
   | MatchKeyword
   | MultiLineComment
   | Newline
+  | OfKeyword
   | ReturnKeyword
   | StringLiteral
   | Symbol<SymbolKind>
@@ -136,6 +137,12 @@ export class IfKeyword extends Keyword<"if"> {
 export class InKeyword extends Keyword<"in"> {
   constructor(span: Span) {
     super("in", span);
+  }
+}
+
+export class OfKeyword extends Keyword<"of"> {
+  constructor(span: Span) {
+    super("of", span);
   }
 }
 

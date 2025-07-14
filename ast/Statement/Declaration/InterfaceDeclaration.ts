@@ -1,7 +1,7 @@
 import { Identifier } from "../../Identifer.ts";
 import { Span } from "../../../tokens/Span.ts";
 import { Type } from "../../Type/mod.ts";
-import { RecordFieldType } from "../../Type/RecordLiteralType.ts";
+import { RecordFieldType } from "../../Type/RecordType.ts";
 import { TypeParameter } from "../../Type/TypeParameter.ts";
 import { ExportKeyword } from "../../../tokens/Token.ts";
 

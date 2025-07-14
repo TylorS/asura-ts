@@ -8,8 +8,8 @@ export class EffectType {
 
   constructor(
     readonly name: Identifier,
-    readonly parameters: TypeParameter[],
-    readonly fields: EffectField[],
+    readonly parameters: readonly TypeParameter[],
+    readonly fields: readonly EffectField[],
     readonly span: Span,
   ) {}
 }

@@ -10,7 +10,7 @@ export class VoidConstructor {
 
   constructor(
     readonly name: Identifier,
-    readonly span: Span,
+    readonly span: Span
   ) {}
 }
 
@@ -20,15 +20,20 @@ export class TupleConstructor {
 
   constructor(
     readonly name: Identifier,
-    readonly parameters: readonly Type[],
+    readonly parameters: readonly (Type | RecordConstructorField)[],
     readonly span: Span,
   ) {}
 }
 
 // RecordConstructor: like "Left{error:E}" - named fields
-export interface RecordConstructorField {
-  readonly name: Identifier;
-  readonly type: Type;
+export class RecordConstructorField {
+  readonly kind = "RecordConstructorField";
+
+  constructor(
+    readonly name: Identifier,
+    readonly type: Type,
+    readonly optional: boolean,
+  ) {}
 }
 
 export class RecordConstructor {

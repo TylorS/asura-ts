@@ -8,16 +8,7 @@ export class TypeReference {
 
   constructor(
     readonly name: Identifier,
-    readonly typeArguments: ReadonlyArray<TypeArgument | TypeHole>,
-    readonly span: Span,
-  ) {}
-}
-
-export class TypeArgument {
-  readonly kind = "TypeArgument";
-
-  constructor(
-    readonly type: Type,
+    readonly typeArguments: ReadonlyArray<Type | TypeHole>,
     readonly span: Span,
   ) {}
 }

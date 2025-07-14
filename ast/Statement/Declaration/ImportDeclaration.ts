@@ -16,7 +16,7 @@ export class ImportDeclaration {
 
 export class NamespaceImport {
   readonly kind = "NamespaceImport";
-  constructor(readonly name: Identifier, readonly span: Span) {}
+  constructor(readonly name: Identifier) {}
 }
 
 export class NamedImports {

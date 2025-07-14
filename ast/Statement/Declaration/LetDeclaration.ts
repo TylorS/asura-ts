@@ -2,7 +2,7 @@ import { Expression } from "../../Expression/mod.ts";
 import { Identifier } from "../../Identifer.ts";
 import { Span } from "../../../tokens/Span.ts";
 import { Type } from "../../Type/mod.ts";
-import { ExportKeyword } from "../../../tokens/Token.ts";
+import { ExportKeyword, MutableKeyword } from "../../../tokens/Token.ts";
 
 export class LetDeclaration {
   readonly kind = "LetDeclaration";
@@ -12,12 +12,7 @@ export class LetDeclaration {
     readonly mutableKeyword: MutableKeyword | null,
     readonly name: Identifier,
     readonly type: Type | null,
-    readonly initializer: Expression | null,
+    readonly initializer: Expression,
     readonly span: Span,
   ) {}
-}
-
-export class MutableKeyword {
-  readonly kind = "MutableKeyword";
-  constructor(readonly span: Span) {}
 }

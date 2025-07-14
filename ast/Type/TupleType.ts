@@ -3,8 +3,8 @@ import { Span } from "../../tokens/Span.ts";
 import { SpreadType } from "./SpreadType.ts";
 import { Type } from "./Type.ts";
 
-export class TupleLiteralType {
-  readonly kind = "TupleLiteralType";
+export class TupleType {
+  readonly kind = "TupleType";
 
   constructor(
     readonly elements: ReadonlyArray<TupleElement>,
@@ -18,6 +18,7 @@ export class TupleElement {
   constructor(
     readonly type: Type | SpreadType,
     readonly name: Identifier | null,
+    readonly optional: boolean,
     readonly span: Span,
   ) {}
 }

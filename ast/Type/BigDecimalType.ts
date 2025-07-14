@@ -8,3 +8,11 @@ export class BigDecimalLiteralType {
     readonly span: Span,
   ) {}
 }
+
+export class BigDecimalType {
+  readonly kind = "BigDecimalType";
+
+  constructor(
+    readonly span: Span,
+  ) {}
+}

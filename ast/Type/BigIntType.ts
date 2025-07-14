@@ -8,3 +8,11 @@ export class BigIntLiteralType {
     readonly span: Span,
   ) {}
 }
+
+export class BigIntType {
+  readonly kind = "BigIntType";
+
+  constructor(
+    readonly span: Span,
+  ) {}
+}

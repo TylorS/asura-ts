@@ -9,3 +9,11 @@ export class RegexLiteralType {
     readonly span: Span,
   ) {}
 }
+
+export class RegexType {
+  readonly kind = "RegexType";
+
+  constructor(
+    readonly span: Span,
+  ) {}
+}

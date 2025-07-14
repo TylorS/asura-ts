@@ -61,9 +61,14 @@ export class RecordConstructorPattern {
   ) {}
 }
 
-export interface RecordPatternField {
-  readonly name: Identifier;
-  readonly pattern: Pattern | null;
+export class RecordPatternField {
+  readonly kind = "RecordPatternField";
+
+  constructor(
+    readonly name: Identifier,
+    readonly pattern: Pattern | null,
+    readonly span: Span,
+  ) {}
 }
 
 export class TuplePattern {

@@ -7,6 +7,8 @@ export const SYMBOLS = {
   Minus: "-",
   Multiply: "*",
   Divide: "/",
+  Modulus: "%",
+  Exponent: "**",
 
   // Comparison Operators
   Equal: "==",
@@ -26,6 +28,8 @@ export const SYMBOLS = {
 
   // Logical Operators
   NullCoalescing: "??",
+  And: "&&",
+  Or: "||",
 
   // Type Operators
   Union: "|",

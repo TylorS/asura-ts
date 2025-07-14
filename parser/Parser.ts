@@ -7,8 +7,18 @@ import {
   DiagnosticSeverity,
 } from "../diagnostics/mod.ts";
 import { Span } from "../tokens/Span.ts";
-import { getSymbolName, GetSymbolName, SymbolValue } from "../tokens/Symbols.ts";
-import { Symbol, Token } from "../tokens/Token.ts";
+import {
+  GetSymbolName,
+  getSymbolName,
+  SymbolValue,
+} from "../tokens/Symbols.ts";
+import {
+  Identifier,
+  Newline,
+  Symbol,
+  Token,
+  Whitespace,
+} from "../tokens/Token.ts";
 import { pipe, Pipeable, pipeArguments } from "./Pipeable.ts";
 
 export class ParserContext {
@@ -27,11 +37,12 @@ export class ParserContext {
 
   span(): Span {
     const token = this.peek();
+    console.log(token)
     if (token !== undefined) {
       return token.span;
     }
 
-    throw new Error("No token to get span from");
+    return this.tokens.at(-1)!.span;
   }
 
   consume<K extends Token["kind"]>(): Extract<Token, { kind: K }> {
@@ -129,7 +140,9 @@ export interface Parser<T> extends Pipeable {
 export declare namespace Parser {
   // deno-lint-ignore no-explicit-any
   export type Any = Parser<any>;
-  export type Type<T> = [T] extends [Parser<infer U>] ? U : never;
+  export type Type<T> = [T] extends [never] ? never
+    : [T] extends [Parser<infer U>] ? U
+    : never;
 }
 
 export type ParseResult<T> =
@@ -382,16 +395,16 @@ export function symbol<K extends SymbolValue>(
   return {
     parse(context: ParserContext): ParseResult<Symbol<GetSymbolName<K>>> {
       const token = context.peek();
-      if (token.kind !== "Symbol") {
+      if (!token || token.kind !== "Symbol") {
         return ParseFailure.error(
           DiagnosticCode.UNEXPECTED_TOKEN,
-          `Expected ${kind}, got ${token.kind}`,
-          token.span,
+          `Expected ${kind}, got ${token?.kind}`,
+          token?.span ?? context.span(),
         );
       }
 
       if (token.symbol === kind) {
-        return new ParseSuccess(token as Symbol<GetSymbolName<K>>);
+        return new ParseSuccess(context.consume() as Symbol<GetSymbolName<K>>);
       }
 
       return ParseFailure.error(
@@ -496,11 +509,27 @@ export function sequence<Parsers extends ReadonlyArray<Parser.Any>>(
   };
 }
 
+// Sequence which strips optional/unneeded whitespace
+export function seq<Parsers extends ReadonlyArray<Parser.Any>>(
+  ...parsers: Parsers
+): Parser<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> }> {
+  return sequence(
+    ...parsers.flatMap((parser, i) =>
+      i < parsers.length - 1
+        ? [parser, zeroOrMore(WHITESPACE_OR_NEWLINE)]
+        : [parser]
+    ),
+  ).pipe(
+    map((results) => results.filter((_, i) => i % 2 === 0)),
+  ) as Parser<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> }>;
+}
+
 export function zeroOrMore<T>(
   parser: Parser<T>,
 ): Parser<T[]> {
   return {
     parse(context: ParserContext): ParseResult<T[]> {
+      const startPosition = context.getPosition();
       const results: T[] = [];
       while (true) {
         const result = parser.parse(context);
@@ -510,10 +539,17 @@ export function zeroOrMore<T>(
           break;
         }
       }
+      if (results.length === 0) {
+        context.setPosition(startPosition);
+      }
       return new ParseSuccess(results);
     },
     pipe,
   };
+}
+
+export function whitespace(): Parser<ReadonlyArray<Whitespace | Newline>> {
+  return zeroOrMore(WHITESPACE_OR_NEWLINE);
 }
 
 export function oneOrMore<T>(
@@ -529,7 +565,9 @@ export function oneOrMore<T>(
   };
 }
 
-export function delimited<U, V>(
+export const WHITESPACE_OR_NEWLINE = or(token("Whitespace"), token("Newline"));
+
+export function delimitedBy<U, V>(
   open: Parser<U>,
   close: Parser<V>,
 ) {
@@ -538,7 +576,7 @@ export function delimited<U, V>(
     content: T;
     after: V;
   }> => {
-    return sequence(open, content, close).pipe(
+    return seq(open, content, close).pipe(
       map(([before, content, after]) => ({ before, content, after })),
     );
   };
@@ -548,8 +586,13 @@ export function separatedBy<U>(
   separator: Parser<U>,
 ) {
   return <T>(parser: Parser<T>): Parser<T[]> => {
-    return sequence(parser, zeroOrMore(sequence(separator, parser))).pipe(
-      map(([first, rest]) => [first, ...rest.map(([_, value]) => value)]),
+    return seq(optional(parser), zeroOrMore(seq(separator, parser))).pipe(
+      map((
+        [first, rest],
+      ) => [
+        ...(first === null ? [] : [first]),
+        ...rest.map(([_, value]) => value),
+      ]),
     );
   };
 }
@@ -638,6 +681,18 @@ export class PrecedenceLevel<T> {
     readonly ops: ReadonlyArray<OperatorParser<T>>,
     readonly assoc: "left" | "right" | "none",
   ) {}
+
+  static left<T>(...ops: OperatorParser<T>[]) {
+    return new PrecedenceLevel(ops, "left");
+  }
+
+  static right<T>(...ops: OperatorParser<T>[]) {
+    return new PrecedenceLevel(ops, "right");
+  }
+
+  static none<T>(...ops: OperatorParser<T>[]) {
+    return new PrecedenceLevel(ops, "none");
+  }
 }
 
 // The precedence combinator
@@ -729,20 +784,24 @@ type UnaryOperatorParser<T> = Parser<(operand: T) => T>;
 // Unary expression combinator for prefix operators only
 export function unary<T>(
   atom: Parser<T>,
-  prefixOps: ReadonlyArray<UnaryOperatorParser<T>>
+  prefixOps: ReadonlyArray<UnaryOperatorParser<T>>,
 ): Parser<T> {
   return {
     parse(ctx) {
-      // Parse prefix operators (right-associative)
-      let result = atom.parse(ctx);
-      if (result.type !== "success") return result;
+      let result: ParseResult<T> | undefined;
 
       // Apply prefix operators
       for (const prefixOp of prefixOps) {
         const opRes = prefixOp.parse(ctx);
         if (opRes.type === "success") {
+          result = atom.parse(ctx);
+          if (result.type !== "success") return result;
           result = new ParseSuccess(opRes.value(result.value));
         }
+      }
+
+      if (result === undefined) {
+        return atom.parse(ctx);
       }
 
       return result;
@@ -757,7 +816,7 @@ type ChainOperatorParser<T> = Parser<(left: T, right: T) => T>;
 // Chain combinator for left-associative chaining (like method calls, property access)
 export function chain<T>(
   atom: Parser<T>,
-  op: ChainOperatorParser<T>
+  op: ChainOperatorParser<T>,
 ): Parser<T> {
   return {
     parse(ctx) {
@@ -776,6 +835,46 @@ export function chain<T>(
       }
 
       return result;
+    },
+    pipe,
+  };
+}
+
+export function literal<T extends string>(text: T): Parser<Identifier> {
+  return {
+    parse(context: ParserContext): ParseResult<Identifier> {
+      const identifier = token("Identifier").parse(context);
+      if (identifier.type !== "success") {
+        return identifier;
+      }
+
+      if (identifier.value.text === text) {
+        return new ParseSuccess<Identifier>(identifier.value);
+      }
+
+      return ParseFailure.error(
+        DiagnosticCode.UNEXPECTED_TOKEN,
+        `Expected ${text}, got ${identifier.value.text}`,
+        identifier.value.span,
+      );
+    },
+    pipe,
+  };
+}
+
+export function keywordAsIdentifer(): Parser<Identifier> {
+  return {
+    parse(context: ParserContext): ParseResult<Identifier> {
+      const token = context.peek();
+      if ("asIdentifier" in token) {
+        return new ParseSuccess(token.asIdentifier());
+      }
+
+      return ParseFailure.error(
+        DiagnosticCode.UNEXPECTED_TOKEN,
+        `Expected identifier, got ${token.kind}`,
+        token.span,
+      );
     },
     pipe,
   };

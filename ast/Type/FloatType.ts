@@ -8,3 +8,11 @@ export class FloatLiteralType {
     readonly span: Span,
   ) {}
 }
+
+export class FloatType {
+  readonly kind = "FloatType";
+
+  constructor(
+    readonly span: Span,
+  ) {}
+}

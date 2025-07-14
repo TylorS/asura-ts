@@ -11,6 +11,7 @@ export type Token =
   | ContinueKeyword
   | DataKeyword
   | EffectKeyword
+  | ExtendsKeyword
   | ElseKeyword
   | ExportKeyword
   | FloatLiteral
@@ -24,6 +25,7 @@ export type Token =
   | IntegerLiteral
   | InterfaceKeyword
   | LetKeyword
+  | MutableKeyword
   | MatchKeyword
   | MultiLineComment
   | Newline
@@ -57,6 +59,12 @@ export class ExportKeyword extends Keyword<"export"> {
   }
 }
 
+export class MutableKeyword extends Keyword<"mut"> {
+  constructor(span: Span) {
+    super("mut", span);
+  }
+}
+
 export class DataKeyword extends Keyword<"data"> {
   constructor(span: Span) {
     super("data", span);
@@ -66,6 +74,12 @@ export class DataKeyword extends Keyword<"data"> {
 export class EffectKeyword extends Keyword<"effect"> {
   constructor(span: Span) {
     super("effect", span);
+  }
+}
+
+export class ExtendsKeyword extends Keyword<"extends"> {
+  constructor(span: Span) {
+    super("extends", span);
   }
 }
 

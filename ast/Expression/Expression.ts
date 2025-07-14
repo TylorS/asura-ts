@@ -12,8 +12,8 @@ import type {
 } from "./Literal/mod.ts";
 import { MatchExpression } from "./MatchExpression.ts";
 import { FunctionExpression } from "./FunctionExpression.ts";
-import { Block } from "./Block.ts";
 import { Identifier } from "../Identifer.ts";
+import { UnaryExpression } from "./UnaryExpression.ts";
 
 export type Literal =
   | ArrayLiteral
@@ -32,4 +32,4 @@ export type Expression =
   | BinaryExpression
   | MatchExpression
   | FunctionExpression
-  | Block;
+  | UnaryExpression

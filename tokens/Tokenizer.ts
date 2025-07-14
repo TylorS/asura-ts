@@ -18,6 +18,7 @@ import {
   ElseKeyword,
   // Keywords
   ExportKeyword,
+  ExtendsKeyword,
   FloatLiteral,
   ForKeyword,
   FunKeyword,
@@ -31,6 +32,7 @@ import {
   LetKeyword,
   MatchKeyword,
   MultiLineComment,
+  MutableKeyword,
   Newline,
   OfKeyword,
   ReturnKeyword,
@@ -65,6 +67,8 @@ const KEYWORDS = {
   "handle": HandleKeyword,
   "match": MatchKeyword,
   "with": WithKeyword,
+  "mut": MutableKeyword,
+  "extends": ExtendsKeyword,
 } as const;
 
 // Tokenizer state machine states

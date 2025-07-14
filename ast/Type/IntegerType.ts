@@ -8,3 +8,11 @@ export class IntegerLiteralType {
     readonly span: Span,
   ) {}
 }
+
+export class IntegerType {
+  readonly kind = "IntegerType";
+
+  constructor(
+    readonly span: Span,
+  ) {}
+}

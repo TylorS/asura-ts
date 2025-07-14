@@ -1,4 +1,5 @@
 import { Span } from "../../tokens/Span.ts";
+import { Type } from "./Type.ts";
 import { TypeReference } from "./TypeReference.ts";
 
 export class TypeParameter {
@@ -6,7 +7,7 @@ export class TypeParameter {
 
   constructor(
     readonly reference: TypeReference,
-    readonly constraints: readonly TypeReference[],
+    readonly constraints: readonly Type[],
     readonly span: Span,
   ) {}
 }

@@ -8,3 +8,11 @@ export class StringLiteralType {
     readonly span: Span,
   ) {}
 }
+
+export class StringType {
+  readonly kind = "StringType";
+
+  constructor(
+    readonly span: Span,
+  ) {}
+}

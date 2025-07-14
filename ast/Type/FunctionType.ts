@@ -10,8 +10,8 @@ export class FunctionType {
   constructor(
     readonly typeParameters: readonly TypeParameter[],
     readonly parameters: readonly FunctionParameterType[],
-    readonly returnType: Type,
     readonly effects: EffectRecordSignature | null,
+    readonly returnType: Type,
     readonly span: Span,
   ) {}
 }
@@ -21,8 +21,8 @@ export class FunctionParameterType {
 
   constructor(
     readonly name: Identifier,
-    readonly type: Type,
     readonly effects: EffectRecordSignature | null,
+    readonly type: Type,
     readonly span: Span,
   ) {}
 }

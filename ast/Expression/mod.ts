@@ -5,3 +5,4 @@ export * from "./FunctionExpression.ts";
 export * from "./Literal/mod.ts";
 export * from "./MatchExpression.ts";
 export * from "./Operator.ts";
+export * from "./UnaryExpression.ts";

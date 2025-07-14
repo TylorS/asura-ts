@@ -8,3 +8,11 @@ export class BooleanLiteralType {
     readonly span: Span,
   ) {}
 }
+
+export class BooleanType {
+  readonly kind = "BooleanType";
+
+  constructor(
+    readonly span: Span,
+  ) {}
+}

@@ -40,6 +40,8 @@ export type Token =
 
 export abstract class Spanned<Kind extends string> {
   constructor(readonly kind: Kind, readonly span: Span) { }
+
+  abstract toString(): string;
 }
 
 export abstract class Keyword<T extends string> extends Spanned<T> {
@@ -49,6 +51,10 @@ export abstract class Keyword<T extends string> extends Spanned<T> {
 
   asIdentifier(): Identifier {
     return new Identifier(this.kind, this.span);
+  }
+
+  override toString(): string {
+    return this.kind;
   }
 }
 
@@ -198,11 +204,19 @@ export class Identifier extends Spanned<"Identifier"> {
   constructor(readonly text: string, span: Span) {
     super("Identifier", span);
   }
+
+  override toString(): string {
+    return this.text;
+  }
 }
 
 export class IntegerLiteral extends Spanned<"IntegerLiteral"> {
   constructor(readonly text: string, span: Span) {
     super("IntegerLiteral", span);
+  }
+
+  override toString(): string {
+    return this.text;
   }
 }
 
@@ -210,11 +224,19 @@ export class FloatLiteral extends Spanned<"FloatLiteral"> {
   constructor(readonly text: string, span: Span) {
     super("FloatLiteral", span);
   }
+
+  override toString(): string {
+    return this.text;
+  }
 }
 
 export class BigIntegerLiteral extends Spanned<"BigIntegerLiteral"> {
   constructor(readonly text: string, span: Span) {
     super("BigIntegerLiteral", span);
+  }
+
+  override toString(): string {
+    return this.text;
   }
 }
 
@@ -222,17 +244,29 @@ export class BigDecimalLiteral extends Spanned<"BigDecimalLiteral"> {
   constructor(readonly text: string, span: Span) {
     super("BigDecimalLiteral", span);
   }
+
+  override toString(): string {
+    return this.text;
+  }
 }
 
 export class BooleanLiteral extends Spanned<"BooleanLiteral"> {
   constructor(readonly text: "true" | "false", span: Span) {
     super("BooleanLiteral", span);
   }
+
+  override toString(): string {
+    return this.text;
+  }
 }
 
 export class StringLiteral extends Spanned<"StringLiteral"> {
   constructor(readonly text: string, span: Span) {
     super("StringLiteral", span);
+  }
+
+  override toString(): string {
+    return this.text;
   }
 }
 
@@ -246,6 +280,10 @@ export class Symbol<T extends SymbolKind> extends Spanned<"Symbol"> {
   ) {
     super("Symbol", span);
   }
+
+  override toString(): string {
+    return this.text
+  }
 }
 
 // Comments
@@ -253,11 +291,19 @@ export class Comment extends Spanned<"Comment"> {
   constructor(readonly text: string, span: Span) {
     super("Comment", span);
   }
+
+  override toString(): string {
+    return this.text;
+  }
 }
 
 export class MultiLineComment extends Spanned<"MultiLineComment"> {
   constructor(readonly text: string, span: Span) {
     super("MultiLineComment", span);
+  }
+
+  override toString(): string {
+    return this.text;
   }
 }
 
@@ -266,10 +312,18 @@ export class Whitespace extends Spanned<"Whitespace"> {
   constructor(readonly text: string, span: Span) {
     super("Whitespace", span);
   }
+
+  override toString(): string {
+    return this.text;
+  }
 }
 
 export class Newline extends Spanned<"Newline"> {
   constructor(span: Span) {
     super("Newline", span);
+  }
+
+  override toString(): string {
+    return "\n";
   }
 }

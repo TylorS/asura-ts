@@ -22,7 +22,12 @@ function createParserContext(source: string): ParserContext {
 }
 
 function assertSuccess<T>(result: ParseResult<T>): asserts result is ParseSuccess<T> {
-  expect(result).toContainEqual({ type: "success" });
+  try {
+    expect(result.type).toBe("success");
+  } catch (e) {
+    console.log(result);
+    throw e;
+  }
 }
 
 describe("Expression Parser", () => {
@@ -84,11 +89,9 @@ describe("Expression Parser", () => {
       expect((result.value as AST.StringLiteral).value).toBe("hello world");
     });
 
-    it.only("should parse regex literals", () => {
+    it("should parse regex literals", () => {
       const context = createParserContext("/[a-z]+/g");
       const result = literals().parse(context);
-
-      console.log(result);
       
       assertSuccess(result);
       expect(result.value).toBeInstanceOf(AST.RegexLiteral);

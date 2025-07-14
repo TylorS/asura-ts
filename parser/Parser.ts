@@ -37,7 +37,6 @@ export class ParserContext {
 
   span(): Span {
     const token = this.peek();
-    console.log(token)
     if (token !== undefined) {
       return token.span;
     }

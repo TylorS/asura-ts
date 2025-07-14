@@ -1,17 +1,19 @@
 import * as AST from "../../ast/mod.ts";
+import { DiagnosticCode } from "../../diagnostics/Diagnostic.ts";
 import * as Parser from "../Parser.ts";
+import { pipe } from "../Pipeable.ts";
 import { block } from "./Statement.ts";
 import { effectRecordSignature, type, typeParametersList } from "./Type.ts";
 
 export function expression(): Parser.Parser<AST.Expression> {
   return Parser.or(
-    Parser.lazy(parenthesizedExpression),
     Parser.lazy(literals),
     Parser.lazy(arrayLiteral),
     Parser.lazy(recordLiteral),
     Parser.lazy(matchExpression),
     Parser.lazy(functionExpression),
-    Parser.lazy(unaryExpression),
+    Parser.lazy(parenthesizedExpression),
+    // Parser.lazy(unaryExpression),
     Parser.lazy(binaryExpression),
   );
 }
@@ -96,35 +98,132 @@ export function literals() {
       ),
     ),
     Parser.token("StringLiteral").pipe(
-      Parser.map((token) => new AST.StringLiteral(token.text.slice(1, -1), token.span)),
+      Parser.map((token) =>
+        new AST.StringLiteral(token.text.slice(1, -1), token.span)
+      ),
     ),
   );
 }
 
-function regexLiteral() {
-  return Parser.sequence(
-    Parser.zeroOrMore(Parser.or(
-      Parser.token("Identifier"),
-      Parser.token("Whitespace"),
-      Parser.token("Symbol"),
-    )).pipe(
-      Parser.delimitedBy(Parser.symbol("/"), Parser.symbol("/")),
-    ),
-    Parser.optional(
-      Parser.token("Identifier"),
-    ),
-  ).pipe(
-    Parser.map(([{ before, content, after }, flags]) => {
-      const start = before.span.start;
-      const end = flags ? flags.span.end : after.span.end;
-      const text = content.map((c) => c.text).join("");
-      return new AST.RegexLiteral(
-        text,
-        flags?.text ?? null,
-        new AST.Span(start, end),
+export function regexLiteral() {
+  return {
+    parse(context: Parser.ParserContext): Parser.ParseResult<AST.RegexLiteral> { 
+      const startToken = context.peek();
+      const startSpan = startToken.span;
+      
+      // Parse opening slash
+      const open = context.peek();
+      if (open.kind !== "Symbol" || open.text !== "/") {
+        return Parser.ParseFailure.error(
+          DiagnosticCode.UNEXPECTED_TOKEN,
+          "Expected '/'",
+          open.span,
+        );
+      }
+      context.consume();
+      
+      // Parse regex pattern
+      let pattern: string = '';
+      let current = context.peek();
+      let depth = 0; // Track bracket/brace depth
+      let inCharacterClass = false;
+      let escaped = false;
+      
+      while (current && !(current.kind === "Symbol" && current.text === "/" && depth === 0 && !inCharacterClass)) {
+        const currentText = current.toString()
+        
+        if (escaped) {
+          // Handle escaped characters
+          pattern += '\\' + currentText;
+          escaped = false;
+        } else if (currentText === '\\') {
+          // Start escape sequence
+          pattern += currentText;
+          escaped = true;
+        } else if (currentText === '[' && !inCharacterClass) {
+          // Start character class
+          pattern += currentText;
+          inCharacterClass = true;
+        } else if (currentText === ']' && inCharacterClass) {
+          // End character class
+          pattern += currentText;
+          inCharacterClass = false;
+        } else if (currentText === '(' && !inCharacterClass) {
+          // Start group
+          pattern += currentText;
+          depth++;
+        } else if (currentText === ')' && !inCharacterClass && depth > 0) {
+          // End group
+          pattern += currentText;
+          depth--;
+        } else if (currentText === '{' && !inCharacterClass) {
+          // Start quantifier
+          pattern += currentText;
+          depth++;
+        } else if (currentText === '}' && !inCharacterClass && depth > 0) {
+          // End quantifier
+          pattern += currentText;
+          depth--;
+        } else {
+          // Regular character
+          pattern += currentText;
+        }
+        
+        context.consume();
+        current = context.peek();
+        
+        // Check for end of input
+        if (!current) {
+          return Parser.ParseFailure.error(
+            DiagnosticCode.PREMATURE_EOF,
+            "Unterminated regex literal",
+            startSpan,
+          );
+        }
+      }
+      
+      // Parse closing slash
+      const close = context.peek();
+      if (close.kind !== "Symbol" || close.text !== "/") {
+        return Parser.ParseFailure.error(
+          DiagnosticCode.UNEXPECTED_TOKEN,
+          "Expected '/'",
+          close.span,
+        );
+      }
+      context.consume();
+      
+      // Parse flags
+      let flags: string = '';
+      current = context.peek();
+      
+      while (current && current.kind === "Identifier") {
+        const flagChar = current.text;
+        // Validate flag characters (only allow valid regex flags)
+        if (flagChar.length === 1 && /[gimsuy]/.test(flagChar)) {
+          if (flags.includes(flagChar)) {
+            return Parser.ParseFailure.error(
+              DiagnosticCode.UNEXPECTED_TOKEN,
+              `Duplicate flag '${flagChar}'`,
+              current.span,
+            );
+          }
+          flags += flagChar;
+          context.consume();
+          current = context.peek();
+        } else {
+          break;
+        }
+      }
+      
+      const endSpan = context.peek() ? context.peek().span : startSpan;
+      
+      return new Parser.ParseSuccess(
+        new AST.RegexLiteral(pattern, flags || null, new AST.Span(startSpan.start, endSpan.end)),
       );
-    }),
-  );
+    },
+    pipe,
+  }
 }
 
 export function matchExpression(): Parser.Parser<AST.MatchExpression> {
@@ -172,7 +271,9 @@ function matchCase(): Parser.Parser<AST.MatchCase> {
   );
 }
 
-export function returnExpressionOrBlock(): Parser.Parser<AST.Expression | AST.Block> {
+export function returnExpressionOrBlock(): Parser.Parser<
+  AST.Expression | AST.Block
+> {
   return Parser.or(
     Parser.seq(Parser.symbol("=>"), expression()).pipe(
       Parser.map(([_arrow, expression]) => expression),
@@ -412,9 +513,22 @@ export function unaryExpression(): Parser.Parser<AST.UnaryExpression> {
   );
 }
 
+// Atom parser for expressions that don't involve operators
+function atom(): Parser.Parser<AST.Expression> {
+  return Parser.or(
+    Parser.lazy(parenthesizedExpression),
+    Parser.lazy(literals),
+    Parser.lazy(arrayLiteral),
+    Parser.lazy(recordLiteral),
+    Parser.lazy(matchExpression),
+    Parser.lazy(functionExpression),
+    Parser.lazy(unaryExpression),
+  );
+}
+
 export function binaryExpression(): Parser.Parser<AST.Expression> {
   return Parser.precedence(
-    expression(),
+    Parser.lazy(atom),  // Use atom as the base parser
     [
       // Exponentiation (right-associative)
       Parser.PrecedenceLevel.right(

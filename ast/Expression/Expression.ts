@@ -15,6 +15,8 @@ import { FunctionExpression } from "./FunctionExpression.ts";
 import { CallExpression } from "./CallExpression.ts";
 import { Identifier } from "../Identifer.ts";
 import { UnaryExpression } from "./UnaryExpression.ts";
+import { PropertyAccess } from "./PropertyAccess.ts";
+import { IndexAccess } from "./IndexAccess.ts"; 
 
 export type Literal =
   | ArrayLiteral
@@ -35,3 +37,5 @@ export type Expression =
   | FunctionExpression
   | CallExpression
   | UnaryExpression
+  | PropertyAccess
+  | IndexAccess;

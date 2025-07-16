@@ -519,6 +519,69 @@ export function unaryExpression(): Parser.Parser<AST.UnaryExpression> {
   );
 }
 
+function postfixExpression(): Parser.Parser<AST.Expression> {
+  return Parser.seq(
+    Parser.lazy(primaryExpression),
+    Parser.zeroOrMore(
+      Parser.or(
+        // Property access: .identifier
+        Parser.seq(
+          Parser.symbol("."),
+          Parser.token("Identifier"),
+        ).pipe(
+          Parser.map(([_dot, property]) => ({ type: "property" as const, property }))
+        ),
+        // Index access: [expr]
+        Parser.seq(
+          Parser.symbol("["),
+          Parser.lazy(expression),
+          Parser.symbol("]"),
+        ).pipe(
+          Parser.map(([_open, index, _close]) => ({ type: "index" as const, index }))
+        ),
+        // Call: (args)
+        Parser.seq(
+          Parser.symbol("("),
+          Parser.optional(
+            Parser.lazy(expression).pipe(
+              Parser.separatedBy(Parser.symbol(",")),
+            )
+          ),
+          Parser.symbol(")"),
+        ).pipe(
+          Parser.map(([_open, args, _close]) => ({ type: "call" as const, args: args ?? [] }))
+        ),
+      )
+    )
+  ).pipe(
+    Parser.map(([base, postfixes]) => {
+      return postfixes.reduce((object: AST.Expression, op) => {
+        if (op.type === "property") {
+          return new AST.PropertyAccess(
+            object,
+            new AST.Identifier(op.property.text, op.property.span),
+            new AST.Span(object.span.start, op.property.span.end)
+          );
+        } else if (op.type === "index") {
+          return new AST.IndexAccess(
+            object,
+            op.index,
+            new AST.Span(object.span.start, op.index.span.end)
+          );
+        } else if (op.type === "call") {
+          return new AST.CallExpression(
+            object,
+            op.args,
+            new AST.Span(object.span.start, (op.args.length > 0 ? op.args[op.args.length - 1].span.end : object.span.end))
+          );
+        } else {
+          return object;
+        }
+      }, base);
+    })
+  );
+}
+
 // Primary expression parser for expressions that don't involve binary operators
 function primaryExpression(): Parser.Parser<AST.Expression> {
   return Parser.or(
@@ -563,7 +626,7 @@ function callExpression(): Parser.Parser<AST.Expression> {
 
 export function binaryExpression(): Parser.Parser<AST.Expression> {
   return Parser.precedence(
-    Parser.lazy(primaryExpression), // Use primaryExpression as the base parser
+    Parser.lazy(postfixExpression),
     [
       // Assignment (=, +=, -=, *=, /=, %=, **=) (right-associative) - lowest precedence
       Parser.PrecedenceLevel.right(

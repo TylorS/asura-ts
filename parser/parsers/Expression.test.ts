@@ -510,31 +510,94 @@ describe("Expression Parser", () => {
       expect(call.args[1]).toBeInstanceOf(AST.IntegerLiteral);
     });
 
-    // TODO: Implement property access
-    it.skip("should parse property access", () => {
+    it("should parse property access", () => {
       const source = "x.y";
       const context = createParserContext(source);
       const result = expression().parse(context);
 
       assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.PropertyAccess);
+      const prop = result.value as AST.PropertyAccess;
+      expect(prop.object).toBeInstanceOf(AST.Identifier);
+      expect((prop.object as AST.Identifier).text).toBe("x");
+      expect(prop.property).toBeInstanceOf(AST.Identifier);
+      expect(prop.property.text).toBe("y");
     });
 
-    // TODO: Implement index access
-    it.skip("should parse index access", () => {
+    it("should parse bracket access", () => {
       const source = "x[y]";
       const context = createParserContext(source);
       const result = expression().parse(context);
 
       assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.IndexAccess);
+      const idx = result.value as AST.IndexAccess;
+      expect(idx.object).toBeInstanceOf(AST.Identifier);
+      expect((idx.object as AST.Identifier).text).toBe("x");
+      expect(idx.index).toBeInstanceOf(AST.Identifier);
+      expect((idx.index as AST.Identifier).text).toBe("y");
     });
 
-    // TODO: Method calls
-    it.skip("should parse method calls", () => {
+    it("should parse method calls", () => {
       const source = "x.y()";
       const context = createParserContext(source);
       const result = expression().parse(context);
 
       assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.CallExpression);
+      const call = result.value as AST.CallExpression;
+      expect(call.callee).toBeInstanceOf(AST.PropertyAccess);
+      const prop = call.callee as AST.PropertyAccess;
+      expect(prop.object).toBeInstanceOf(AST.Identifier);
+      expect((prop.object as AST.Identifier).text).toBe("x");
+      expect(prop.property).toBeInstanceOf(AST.Identifier);
+      expect(prop.property.text).toBe("y");
+      expect(call.args).toHaveLength(0);
+    });
+
+    it("should parse complex chained expressions", () => {
+      const source = "foo.bar[0].baz(qux, 42)[x.y()]";
+      const context = createParserContext(source);
+      const result = expression().parse(context);
+
+      assertSuccess(result, context, source);
+      // Top-level: IndexAccess
+      expect(result.value).toBeInstanceOf(AST.IndexAccess);
+      const idx1 = result.value as AST.IndexAccess;
+      // idx1.object: CallExpression (baz call)
+      expect(idx1.object).toBeInstanceOf(AST.CallExpression);
+      const call = idx1.object as AST.CallExpression;
+      // call.callee: PropertyAccess (foo.bar[0].baz)
+      expect(call.callee).toBeInstanceOf(AST.PropertyAccess);
+      const bazProp = call.callee as AST.PropertyAccess;
+      expect(bazProp.property.text).toBe("baz");
+      // bazProp.object: IndexAccess (foo.bar[0])
+      expect(bazProp.object).toBeInstanceOf(AST.IndexAccess);
+      const idx0 = bazProp.object as AST.IndexAccess;
+      // idx0.object: PropertyAccess (foo.bar)
+      expect(idx0.object).toBeInstanceOf(AST.PropertyAccess);
+      const barProp = idx0.object as AST.PropertyAccess;
+      expect(barProp.object).toBeInstanceOf(AST.Identifier);
+      expect((barProp.object as AST.Identifier).text).toBe("foo");
+      expect(barProp.property.text).toBe("bar");
+      // idx0.index: IntegerLiteral 0
+      expect(idx0.index).toBeInstanceOf(AST.IntegerLiteral);
+      expect((idx0.index as AST.IntegerLiteral).value).toBe(0);
+      // call.args: [Identifier(qux), IntegerLiteral(42)]
+      expect(call.args).toHaveLength(2);
+      expect(call.args[0]).toBeInstanceOf(AST.Identifier);
+      expect((call.args[0] as AST.Identifier).text).toBe("qux");
+      expect(call.args[1]).toBeInstanceOf(AST.IntegerLiteral);
+      expect((call.args[1] as AST.IntegerLiteral).value).toBe(42);
+      // idx1.index: CallExpression (x.y())
+      expect(idx1.index).toBeInstanceOf(AST.CallExpression);
+      const call2 = idx1.index as AST.CallExpression;
+      expect(call2.callee).toBeInstanceOf(AST.PropertyAccess);
+      const yProp = call2.callee as AST.PropertyAccess;
+      expect(yProp.object).toBeInstanceOf(AST.Identifier);
+      expect((yProp.object as AST.Identifier).text).toBe("x");
+      expect(yProp.property.text).toBe("y");
+      expect(call2.args).toHaveLength(0);
     });
   });
 });

@@ -7,3 +7,5 @@ export * from "./Literal/mod.ts";
 export * from "./MatchExpression.ts";
 export * from "./Operator.ts";
 export * from "./UnaryExpression.ts";
+export * from "./PropertyAccess.ts";
+export * from "./IndexAccess.ts";

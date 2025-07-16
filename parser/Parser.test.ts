@@ -94,7 +94,7 @@ describe("Parser Combinators", () => {
       const source = "let x =";
       const context = createParserContext(source);
 
-      const sequenceParser = Parser.sequence(
+      const sequenceParser = Parser.seq(
         Parser.token("let"),
         Parser.token("Identifier"),
         Parser.symbol("="),
@@ -458,61 +458,6 @@ describe("Parser Combinators", () => {
           op: "neg",
           operand: 42,
         });
-      }
-    });
-  });
-
-  describe("chain", () => {
-    // Simple expression type for testing chaining
-    type ChainExpr = string | { op: string; left: ChainExpr; right: ChainExpr };
-
-    function createChainExpressionParser() {
-      // Atom parser - just numbers for simplicity
-      const atom = Parser.token("Identifier").pipe(
-        Parser.map((token) => token.text as ChainExpr),
-      );
-
-      // Chain operator parser
-      const chainOp = Parser.symbol(".").pipe(
-        Parser.map(() => (left: ChainExpr, right: ChainExpr): ChainExpr => ({ op: "chain", left, right })),
-      );
-
-      return Parser.chain(atom, chainOp);
-    }
-
-    it("should parse chained expressions", () => {
-      const source = "a.b.c";
-      const context = createParserContext(source);
-      const parser = createChainExpressionParser();
-
-      const result = parser.parse(context);
-
-      expect(result.type).toBe("success");
-      if (result.type === "success") {
-        // Should parse as: ((1.2).3)
-        const expr = result.value as ChainExpr;
-        expect(expr).toEqual({
-          op: "chain",
-          left: {
-            op: "chain",
-            left: "a",
-            right: "b",
-          },
-          right: "c",
-        });
-      }
-    });
-
-    it("should handle single atom", () => {
-      const source = "x";
-      const context = createParserContext(source);
-      const parser = createChainExpressionParser();
-
-      const result = parser.parse(context);
-
-      expect(result.type).toBe("success");
-      if (result.type === "success") {
-        expect(result.value).toBe("x");
       }
     });
   });

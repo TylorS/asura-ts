@@ -1,11 +1,12 @@
-import * as Parser from "../Parser.ts";
 import * as AST from "../../ast/mod.ts";
+import { Span } from "../../tokens/Span.ts";
+import { AsKeyword } from "../../tokens/Token.ts";
+import * as Parser from "../Parser.ts";
 import {
   expression,
   functionParameter,
   returnExpressionOrBlock,
 } from "./Expression.ts";
-import { Span } from "../../tokens/Span.ts";
 import {
   effectRecordSignature,
   recordTypeField,
@@ -15,12 +16,36 @@ import {
 } from "./Type.ts";
 
 export function statement(): Parser.Parser<AST.Statement> {
-  return Parser.or(
-    comment(),
-    multilineComment(),
-    declaration(),
-    controlFlow(),
-    expressionStatement(),
+  return Parser.seq(
+    Parser.zeroOrMore(Parser.or(
+      Parser.token("Whitespace"),
+      Parser.token("Newline"),
+    )),
+    Parser.or(
+      comment(),
+      multilineComment(),
+      declaration(),
+      controlFlow(),
+      expressionStatement(),
+    ),
+  ).pipe(
+    Parser.map(([_, value]) => value),
+    withStatementTerminator,
+  );
+}
+
+function withStatementTerminator<A>(
+  parser: Parser.Parser<A>,
+): Parser.Parser<A> {
+  return Parser.seq(
+    parser,
+    Parser.zeroOrMore(Parser.or(
+      Parser.token("Whitespace"),
+      Parser.symbol(";"),
+      Parser.token("Newline"),
+    )),
+  ).pipe(
+    Parser.map(([value, _]) => value),
   );
 }
 
@@ -38,8 +63,12 @@ function multilineComment(): Parser.Parser<AST.MultilineComment> {
 
 export function declaration(): Parser.Parser<AST.Declaration> {
   return Parser.or(
-    exportableDeclaration(),
-    importDeclaration(),
+    exportableDeclaration().pipe(
+      withStatementTerminator,
+    ),
+    importDeclaration().pipe(
+      withStatementTerminator,
+    ),
   );
 }
 
@@ -60,7 +89,7 @@ export function importDeclaration(): Parser.Parser<AST.ImportDeclaration> {
   return Parser.seq(
     Parser.token("import"),
     Parser.or(namespaceImport(), namedImports()),
-    Parser.literal("from'"),
+    Parser.literal("from"),
     Parser.token("StringLiteral").pipe(
       Parser.map((token) => new AST.StringLiteral(token.text, token.span)),
     ),
@@ -109,7 +138,15 @@ function namedImport(): Parser.Parser<AST.NamedImport> {
   return Parser.seq(
     Parser.token("Identifier"),
     Parser.optional(
-      Parser.seq(Parser.token("as"), Parser.token("Identifier")),
+      Parser.seq(
+        Parser.or(
+          Parser.literal("as").pipe(
+            Parser.map(({ span }) => new AsKeyword(span)),
+          ),
+          Parser.token("as"),
+        ),
+        Parser.token("Identifier"),
+      ),
     ),
   ).pipe(
     Parser.map(([name, alias]) => {
@@ -353,12 +390,16 @@ export function interfaceDeclaration(): Parser.Parser<
   );
 }
 
+export function identiferOrDestructuring(): Parser.Parser<AST.Identifier> {
+  return Parser.token("Identifier"); // TODO: Allow destructuring
+}
+
 export function letDeclaration(): Parser.Parser<AST.LetDeclaration> {
   return Parser.seq(
     Parser.optional(Parser.token("export")),
     Parser.token("let"),
     Parser.optional(Parser.token("mut")),
-    Parser.token("Identifier"),
+    identiferOrDestructuring(),
     Parser.optional(Parser.seq(Parser.symbol(":"), type())),
     Parser.symbol("="),
     expression(),
@@ -421,11 +462,13 @@ export function typeAliasDeclaration(): Parser.Parser<
 
 export function controlFlow(): Parser.Parser<AST.ControlFlow> {
   return Parser.or(
+    forStatement(),
     forInStatement(),
     forOfStatement(),
-    forStatement(),
     ifStatement(),
     whileStatement(),
+  ).pipe(
+    withStatementTerminator,
   );
 }
 
@@ -516,11 +559,14 @@ export function forStatement(): Parser.Parser<AST.ForStatement> {
     Parser.optional(Parser.seq(Parser.token("Identifier"), Parser.symbol(":"))),
     Parser.token("for"),
     Parser.symbol("("),
-    Parser.optional(letDeclaration()),
+    Parser.token("let"),
+    expression().pipe(
+      Parser.separatedBy(Parser.symbol(",")),
+    ),
     Parser.symbol(";"),
-    Parser.optional(expression()),
+    Parser.optional(Parser.lazy(expression)),
     Parser.symbol(";"),
-    Parser.optional(expression()),
+    Parser.optional(Parser.lazy(expression)),
     Parser.symbol(")"),
     Parser.lazy(() =>
       block<AST.ContinueStatement | AST.BreakStatement>(
@@ -535,6 +581,7 @@ export function forStatement(): Parser.Parser<AST.ForStatement> {
           label,
           _for,
           _lparen,
+          _let,
           init,
           _semi1,
           condition,
@@ -546,7 +593,7 @@ export function forStatement(): Parser.Parser<AST.ForStatement> {
       ) => {
         return new AST.ForStatement(
           label?.[0] ?? null,
-          init ?? null,
+          init ?? [],
           condition ?? null,
           increment ?? null,
           block,
@@ -563,14 +610,12 @@ export function forStatement(): Parser.Parser<AST.ForStatement> {
 export function ifStatement(): Parser.Parser<AST.IfStatement> {
   return Parser.seq(
     Parser.token("if"),
-    Parser.symbol("("),
     expression(),
-    Parser.symbol(")"),
     BlockWithControlFlow,
     Parser.optional(Parser.zeroOrMore(elseIfStatement())),
     Parser.optional(elseStatement()),
   ).pipe(
-    Parser.map(([_if, _lparen, condition, _rparen, then, elseIfs, else_]) => {
+    Parser.map(([_if, condition, then, elseIfs, else_]) => {
       return new AST.IfStatement(
         condition,
         then,
@@ -615,21 +660,16 @@ export function elseStatement(): Parser.Parser<
 }
 
 export function whileStatement(): Parser.Parser<AST.WhileStatement> {
-  return Parser.seq(
-    Parser.token("while"),
-    Parser.symbol("("),
-    expression(),
-    Parser.symbol(")"),
-    BlockWithControlFlow,
-  ).pipe(
-    Parser.map(([_while, _lparen, condition, _rparen, block]) => {
-      return new AST.WhileStatement(
-        condition,
-        block,
-        new AST.Span(_while.span.start, block.span.end),
-      );
-    }),
-  );
+  return Parser.seq(Parser.token("while"), expression(), BlockWithControlFlow)
+    .pipe(
+      Parser.map(([_while, condition, block]) => {
+        return new AST.WhileStatement(
+          condition,
+          block,
+          new AST.Span(_while.span.start, block.span.end),
+        );
+      }),
+    );
 }
 
 export function expressionStatement(): Parser.Parser<AST.ExpressionStatement> {
@@ -644,11 +684,21 @@ export function block<T = never>(
   ...statements: Parser.Parser<T>[]
 ): Parser.Parser<AST.Block<T>> {
   return Parser.seq(
+    Parser.zeroOrMore(Parser.or(
+      Parser.token("Whitespace"),
+      Parser.token("Newline"),
+    )),
     Parser.symbol("{"),
-    Parser.zeroOrMore(Parser.or(returnStatement(), Parser.lazy(statement), ...statements)),
+    Parser.zeroOrMore(
+      Parser.or(returnStatement(), Parser.lazy(statement), ...statements),
+    ),
     Parser.symbol("}"),
+    Parser.zeroOrMore(Parser.or(
+      Parser.token("Whitespace"),
+      Parser.token("Newline"),
+    )),
   ).pipe(
-    Parser.map(([before, content, after]) =>
+    Parser.map(([_ws, before, content, after, _ws2]) =>
       new AST.Block<T>(
         content,
         new AST.Span(before.span.start, after.span.end),

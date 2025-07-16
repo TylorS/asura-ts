@@ -1,6 +1,9 @@
 import * as Parser from "../Parser.ts";
 import * as AST from "../../ast/mod.ts";
 import { Symbol } from "../../tokens/Token.ts";
+import { pipe } from "../Pipeable.ts";
+import { DiagnosticCode } from "../../diagnostics/Diagnostic.ts";
+import { regexLiteral } from "./Expression.ts";
 
 export function type(): Parser.Parser<AST.Type> {
   return Parser.lazy(unionType);
@@ -22,38 +25,25 @@ export function intersectionType(): Parser.Parser<AST.Type> {
   return primaryType().pipe(
     Parser.separatedBy(Parser.symbol("&")),
     Parser.map((types) =>
-      types.length === 1 ? types[0] :
-        new AST.IntersectionType(
-          types,
-          new AST.Span(types[0].span.start, types[types.length - 1].span.end),
-        )
+      types.length === 1 ? types[0] : new AST.IntersectionType(
+        types,
+        new AST.Span(types[0].span.start, types[types.length - 1].span.end),
+      )
     ),
   );
 }
 
 export function primaryType(): Parser.Parser<AST.Type> {
   return Parser.or(
-    Parser.lazy(parenthesizedType),
-    Parser.lazy(arrayType),
-    Parser.lazy(bigDecimalType),
-    Parser.lazy(bigDecimalLiteralType),
-    Parser.lazy(bigIntType),
-    Parser.lazy(bigIntLiteralType),
-    Parser.lazy(booleanType),
-    Parser.lazy(booleanLiteralType),
-    Parser.lazy(effectType),
-    Parser.lazy(floatType),
-    Parser.lazy(floatLiteralType),
     Parser.lazy(functionType),
-    Parser.lazy(integerType),
-    Parser.lazy(integerLiteralType),
-    Parser.lazy(recordType),
-    Parser.lazy(regexType),
-    Parser.lazy(regexLiteralType),
-    Parser.lazy(stringType),
-    Parser.lazy(stringLiteralType),
-    Parser.lazy(tupleType),
+    Parser.lazy(parenthesizedType),
+    Parser.lazy(baseLiteral),
     Parser.lazy(typeReference),
+    Parser.lazy(regexLiteralType),
+    Parser.lazy(arrayType),
+    Parser.lazy(recordType),
+    Parser.lazy(tupleType),
+    Parser.lazy(effectType),
   );
 }
 
@@ -66,59 +56,113 @@ function parenthesizedType(): Parser.Parser<AST.Type> {
 }
 
 export function arrayType(): Parser.Parser<AST.ArrayType> {
-  return type().pipe(
-    Parser.delimitedBy(Parser.symbol("["), Parser.symbol("]")),
-    Parser.map(({ before, content, after }) =>
+  return Parser.seq(
+    Parser.literal("Array"),
+    Parser.symbol("<"),
+    type(),
+    Parser.symbol(">"),
+  ).pipe(
+    Parser.map(([_open, _lessThan, type, _greaterThan]) =>
       new AST.ArrayType(
-        content,
-        new AST.Span(before.span.start, after.span.end),
+        type,
+        new AST.Span(_open.span.start, _greaterThan.span.end),
       )
     ),
   );
 }
 
-export function bigDecimalType(): Parser.Parser<AST.BigDecimalType> {
-  return Parser.literal("BigDecimal").pipe(
-    Parser.map((token) => new AST.BigDecimalType(token.span)),
-  );
-}
+function baseLiteral(): Parser.Parser<AST.Type> {
+  return {
+    parse(context: Parser.ParserContext): Parser.ParseResult<AST.Type> {
+      const token = context.consumeIf(
+        (token) =>
+          token.kind === "BigDecimalLiteral" ||
+          token.kind === "BigIntegerLiteral" ||
+          token.kind === "BooleanLiteral" ||
+          token.kind === "FloatLiteral" ||
+          token.kind === "IntegerLiteral" ||
+          token.kind === "StringLiteral" ||
+          token.kind === "Identifier",
+      );
 
-export function bigDecimalLiteralType(): Parser.Parser<
-  AST.BigDecimalLiteralType
-> {
-  return Parser.token("BigDecimalLiteral").pipe(
-    Parser.map((token) =>
-      new AST.BigDecimalLiteralType(token.text, token.span)
-    ),
-  );
-}
+      if (token === null) {
+        const token = context.peek();
+        return new Parser.ParseFailure([
+          Parser.ParseError.error(
+            DiagnosticCode.UNEXPECTED_TOKEN,
+            `Unexpected token: ${token.kind}`,
+            token.span,
+          ),
+        ]);
+      }
 
-export function bigIntType(): Parser.Parser<AST.BigIntType> {
-  return Parser.literal("BigInt").pipe(
-    Parser.map((token) => new AST.BigIntType(token.span)),
-  );
-}
+      if (token.kind === "BigDecimalLiteral") {
+        return new Parser.ParseSuccess(
+          new AST.BigDecimalLiteralType(token.text, token.span),
+        );
+      }
+      if (token.kind === "BigIntegerLiteral") {
+        return new Parser.ParseSuccess(
+          new AST.BigIntLiteralType(BigInt(token.text), token.span),
+        );
+      }
+      if (token.kind === "BooleanLiteral") {
+        return new Parser.ParseSuccess(
+          new AST.BooleanLiteralType(token.text === "true", token.span),
+        );
+      }
+      if (token.kind === "FloatLiteral") {
+        return new Parser.ParseSuccess(
+          new AST.FloatLiteralType(Number.parseFloat(token.text), token.span),
+        );
+      }
+      if (token.kind === "IntegerLiteral") {
+        return new Parser.ParseSuccess(
+          new AST.IntegerLiteralType(
+            Number.parseInt(token.text, 10),
+            token.span,
+          ),
+        );
+      }
+      if (token.kind === "StringLiteral") {
+        return new Parser.ParseSuccess(
+          new AST.StringLiteralType(token.text.slice(1, -1), token.span),
+        );
+      }
 
-export function bigIntLiteralType(): Parser.Parser<AST.BigIntLiteralType> {
-  return Parser.literal("BigInt").pipe(
-    Parser.map((token) =>
-      new AST.BigIntLiteralType(BigInt(token.text), token.span)
-    ),
-  );
-}
+      if (token.text === "BigDecimal") {
+        return new Parser.ParseSuccess(new AST.BigDecimalType(token.span));
+      }
+      if (token.text === "BigInt") {
+        return new Parser.ParseSuccess(new AST.BigIntType(token.span));
+      }
+      if (token.text === "Boolean") {
+        return new Parser.ParseSuccess(new AST.BooleanType(token.span));
+      }
+      if (token.text === "Float") {
+        return new Parser.ParseSuccess(new AST.FloatType(token.span));
+      }
+      if (token.text === "Int") {
+        return new Parser.ParseSuccess(new AST.IntegerType(token.span));
+      }
+      if (token.text === "String") {
+        return new Parser.ParseSuccess(new AST.StringType(token.span));
+      }
+      if (token.text === "Regex") {
+        return new Parser.ParseSuccess(new AST.RegexType(token.span));
+      }
 
-export function booleanType(): Parser.Parser<AST.BooleanType> {
-  return Parser.literal("Boolean").pipe(
-    Parser.map((token) => new AST.BooleanType(token.span)),
-  );
-}
-
-export function booleanLiteralType(): Parser.Parser<AST.BooleanLiteralType> {
-  return Parser.token("BooleanLiteral").pipe(
-    Parser.map((token) =>
-      new AST.BooleanLiteralType(token.text === "true", token.span)
-    ),
-  );
+      context.setPosition(context.getPosition() - 1);
+      return new Parser.ParseFailure([
+        Parser.ParseError.error(
+          DiagnosticCode.UNEXPECTED_TOKEN,
+          `Unexpected token: ${token.kind}`,
+          token.span,
+        ),
+      ]);
+    },
+    pipe,
+  };
 }
 
 export function effectType(): Parser.Parser<AST.EffectType> {
@@ -127,6 +171,7 @@ export function effectType(): Parser.Parser<AST.EffectType> {
     Parser.optional(typeParametersList()),
     Parser.lazy(effectField).pipe(
       Parser.separatedBy(Parser.symbol(",")),
+      Parser.optional,
       Parser.delimitedBy(Parser.symbol("{"), Parser.symbol("}")),
     ),
   ).pipe(
@@ -134,7 +179,7 @@ export function effectType(): Parser.Parser<AST.EffectType> {
       new AST.EffectType(
         name,
         typeParameters?.typeParameters ?? [],
-        fields.content,
+        fields.content ?? [],
         new AST.Span(
           name.span.start,
           fields.after.span.end,
@@ -154,41 +199,14 @@ function effectField(): Parser.Parser<AST.EffectField> {
   );
 }
 
-export function floatType(): Parser.Parser<AST.FloatType> {
-  return Parser.literal("Float").pipe(
-    Parser.map((token) => new AST.FloatType(token.span)),
-  );
-}
-
-export function floatLiteralType(): Parser.Parser<AST.FloatLiteralType> {
-  return Parser.token("FloatLiteral").pipe(
-    Parser.map((token) =>
-      new AST.FloatLiteralType(Number.parseFloat(token.text), token.span)
-    ),
-  );
-}
-
-export function integerType(): Parser.Parser<AST.IntegerType> {
-  return Parser.literal("Int").pipe(
-    Parser.map((token) => new AST.IntegerType(token.span)),
-  );
-}
-
-export function integerLiteralType(): Parser.Parser<AST.IntegerLiteralType> {
-  return Parser.token("IntegerLiteral").pipe(
-    Parser.map((token) =>
-      new AST.IntegerLiteralType(Number.parseInt(token.text, 10), token.span)
-    ),
-  );
-}
-
 export function recordType(): Parser.Parser<AST.RecordType> {
   return Parser.lazy(recordTypeField).pipe(
     Parser.separatedBy(Parser.symbol(",")),
+    Parser.optional,
     Parser.delimitedBy(Parser.symbol("{"), Parser.symbol("}")),
     Parser.map(({ before, content, after }) =>
       new AST.RecordType(
-        content,
+        content ?? [],
         new AST.Span(before.span.start, after.span.end),
       )
     ),
@@ -208,48 +226,16 @@ export function recordTypeField(): Parser.Parser<AST.RecordFieldType> {
   );
 }
 
-export function regexType(): Parser.Parser<AST.RegexType> {
-  return Parser.literal("Regex").pipe(
-    Parser.map((token) => new AST.RegexType(token.span)),
-  );
-}
-
 export function regexLiteralType(): Parser.Parser<AST.RegexLiteralType> {
-  return Parser.seq(
-    Parser.zeroOrMore(Parser.or(
-      Parser.token("Identifier"),
-      Parser.token("Whitespace"),
-      Parser.token("Symbol"),
-    )).pipe(
-      Parser.delimitedBy(Parser.symbol("/"), Parser.symbol("/")),
+  return regexLiteral().pipe(
+    Parser.map((regex) =>
+      new AST.RegexLiteralType(regex.pattern, regex.flags, regex.span)
     ),
-    Parser.optional(Parser.token("Identifier")),
-  ).pipe(
-    Parser.map(([{ before, content, after }, flags]) =>
-      new AST.RegexLiteralType(
-        content.map((c) => c.text).join(""),
-        flags?.text ?? null,
-        new AST.Span(before.span.start, flags?.span.end ?? after.span.end),
-      )
-    ),
-  );
-}
-
-export function stringType(): Parser.Parser<AST.StringType> {
-  return Parser.literal("String").pipe(
-    Parser.map((token) => new AST.StringType(token.span)),
-  );
-}
-
-export function stringLiteralType(): Parser.Parser<AST.StringLiteralType> {
-  return Parser.token("StringLiteral").pipe(
-    Parser.map((token) => new AST.StringLiteralType(token.text, token.span)),
   );
 }
 
 export function tupleType(): Parser.Parser<AST.TupleType> {
-  return tupleElement().pipe(
-    Parser.separatedBy(Parser.symbol(",")),
+  return tupleElements().pipe(
     Parser.delimitedBy(Parser.symbol("["), Parser.symbol("]")),
     Parser.map(({ before, content, after }) =>
       new AST.TupleType(
@@ -260,25 +246,41 @@ export function tupleType(): Parser.Parser<AST.TupleType> {
   );
 }
 
+const fieldName = Parser.seq(
+  Parser.token("Identifier"),
+  Parser.optional(Parser.symbol("?")),
+  Parser.symbol(":"),
+).pipe(
+  Parser.map(([name, optional, _colon]) => ({
+    name,
+    optional: optional !== null,
+  })),
+);
+
 function tupleElement(): Parser.Parser<AST.TupleElement> {
   return Parser.seq(
-    Parser.optional(
-      Parser.seq(
-        Parser.token("Identifier"),
-        Parser.optional(Parser.symbol("?")),
-        Parser.symbol(":"),
-      ),
-    ),
-    Parser.or(type(), spreadType()),
+    Parser.optional(fieldName),
+    Parser.or(spreadType(), type()),
   ).pipe(
-    Parser.map(([name, type]) => {
-      return new AST.TupleElement(
+    Parser.map(([fieldName, type]) =>
+      new AST.TupleElement(
         type,
-        name?.[0] ?? null,
-        name?.[1] !== null,
-        new AST.Span(name?.[0]?.span.start ?? type.span.start, type.span.end),
-      );
-    }),
+        fieldName?.name ?? null,
+        fieldName?.optional ?? false,
+        new AST.Span(
+          fieldName?.name?.span.start ?? type.span.start,
+          type.span.end,
+        ),
+      )
+    ),
+  );
+}
+
+function tupleElements(): Parser.Parser<AST.TupleElement[]> {
+  return tupleElement().pipe(
+    Parser.separatedBy(Parser.symbol(",")),
+    Parser.optional,
+    Parser.map((elements) => elements ?? []),
   );
 }
 
@@ -298,6 +300,7 @@ export function functionType(): Parser.Parser<AST.FunctionType> {
     Parser.optional(typeParametersList()),
     functionParameterType().pipe(
       Parser.separatedBy(Parser.symbol(",")),
+      Parser.optional,
       Parser.delimitedBy(Parser.symbol("("), Parser.symbol(")")),
     ),
     Parser.symbol("=>"),
@@ -307,7 +310,7 @@ export function functionType(): Parser.Parser<AST.FunctionType> {
     Parser.map(([typeParameters, parameters, _arrow, effects, returnType]) =>
       new AST.FunctionType(
         typeParameters?.typeParameters ?? [],
-        parameters.content,
+        parameters.content ?? [],
         effects,
         returnType,
         new AST.Span(
@@ -321,17 +324,17 @@ export function functionType(): Parser.Parser<AST.FunctionType> {
 
 function functionParameterType(): Parser.Parser<AST.FunctionParameterType> {
   return Parser.seq(
-    Parser.token("Identifier"),
-    Parser.symbol(":"),
+    Parser.optional(fieldName),
     Parser.optional(effectRecordSignature()),
     type(),
   ).pipe(
-    Parser.map(([name, _colon, effects, type]) =>
+    Parser.map(([name, effects, type]) =>
       new AST.FunctionParameterType(
-        name,
+        name?.name ?? null,
+        name?.optional ?? false,
         effects,
         type,
-        new AST.Span(name.span.start, type.span.end),
+        new AST.Span(name?.name?.span.start ?? type.span.start, type.span.end),
       )
     ),
   );
@@ -340,11 +343,13 @@ function functionParameterType(): Parser.Parser<AST.FunctionParameterType> {
 export function effectRecordSignature(): Parser.Parser<
   AST.EffectRecordSignature
 > {
-  return Parser.zeroOrMore(typeReference()).pipe(
+  return typeReference().pipe(
+    Parser.separatedBy(Parser.symbol(",")),
+    Parser.optional,
     Parser.delimitedBy(Parser.symbol("{"), Parser.symbol("}")),
     Parser.map(({ before, content, after }) =>
       new AST.EffectRecordSignature(
-        content,
+        content ?? [],
         new AST.Span(before.span.start, after.span.end),
       )
     ),
@@ -354,19 +359,18 @@ export function effectRecordSignature(): Parser.Parser<
 export function typeReference(): Parser.Parser<AST.TypeReference> {
   return Parser.seq(
     Parser.token("Identifier"),
-    Parser.zeroOrMore(Parser.WHITESPACE_OR_NEWLINE),
     Parser.optional(typeArgumentListWithHoles()),
   ).pipe(
-    Parser.map(([identifier, _whitespace1, typeArguments]) =>
-      new AST.TypeReference(
+    Parser.map(([identifier, typeArguments]) => {
+      return new AST.TypeReference(
         identifier,
         typeArguments?.typeArguments ?? [],
         new AST.Span(
           identifier.span.start,
           typeArguments?.close.span.end ?? identifier.span.end,
         ),
-      )
-    ),
+      );
+    }),
   );
 }
 
@@ -391,7 +395,7 @@ export function typeArgumentListWithHoles(): Parser.Parser<{
   typeArguments: ReadonlyArray<AST.Type | AST.TypeHole>;
   close: Symbol<"GreaterThan">;
 }> {
-  return Parser.or(type(), typeHole()).pipe(
+  return Parser.or(typeHole(), type()).pipe(
     Parser.separatedBy(Parser.symbol(",")),
     Parser.delimitedBy(Parser.symbol("<"), Parser.symbol(">")),
     Parser.map(({ before, content, after }) => ({
@@ -403,7 +407,7 @@ export function typeArgumentListWithHoles(): Parser.Parser<{
 }
 
 export function typeHole(): Parser.Parser<AST.TypeHole> {
-  return Parser.symbol("_").pipe(
+  return Parser.or(Parser.literal("_"), Parser.symbol("_")).pipe(
     Parser.map((hole) => new AST.TypeHole(hole.span)),
   );
 }
@@ -426,21 +430,26 @@ export function typeParameter(): Parser.Parser<AST.TypeParameter> {
     Parser.optional(
       Parser.seq(
         Parser.symbol(":"),
-        type().pipe(
-          Parser.separatedBy(Parser.symbol("&")),
-        ),
+        type(),
       ),
     ),
   ).pipe(
-    Parser.map(([reference, constraints]) =>
-      new AST.TypeParameter(
+    Parser.map(([reference, rawConstraints]) => {
+      const type = rawConstraints?.[1];
+      const constraints = type?.kind === "IntersectionType"
+        ? type.types
+        : type
+        ? [type]
+        : [];
+
+      return new AST.TypeParameter(
         reference,
-        constraints?.[1] ?? [],
+        constraints,
         new AST.Span(
           reference.span.start,
-          constraints?.[1]?.at(-1)?.span.end ?? reference.span.end,
+          constraints.at(-1)?.span.end ?? reference.span.end,
         ),
-      )
-    ),
+      );
+    }),
   );
 }

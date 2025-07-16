@@ -20,7 +20,8 @@ export class FunctionParameterType {
   readonly kind = "FunctionParameterType";
 
   constructor(
-    readonly name: Identifier,
+    readonly name: Identifier | null,
+    readonly optional: boolean,
     readonly effects: EffectRecordSignature | null,
     readonly type: Type,
     readonly span: Span,

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import * as AST from "../../ast/mod.ts";
-import { ParserContext } from "../Parser.ts";
+import { ParserContext, ParseResult, ParseSuccess } from "../Parser.ts";
 import { tokenizeToArray } from "../../tokens/Tokenizer.ts";
-import { DiagnosticCollection } from "../../diagnostics/mod.ts";
+import {
+  DiagnosticCollection,
+  formatDiagnostics,
+} from "../../diagnostics/mod.ts";
 import {
   block,
   breakStatement,
@@ -29,6 +32,27 @@ function createParserContext(source: string): ParserContext {
   return new ParserContext("test.ts", tokens, diagnostics);
 }
 
+function assertSuccess<T>(
+  result: ParseResult<T>,
+  context: ParserContext,
+  source: string,
+): asserts result is ParseSuccess<T> {
+  try {
+    expect(result.type).toBe("success");
+  } catch (e) {
+    if (result.type === "failure") {
+      result.errors.forEach((error) => {
+        context.addFailure(error);
+      });
+      console.log(formatDiagnostics(context.diagnostics.getAll(), source, {
+        colorize: true,
+      }));
+    }
+
+    throw e;
+  }
+}
+
 describe("Statement Parser", () => {
   describe("comments", () => {
     it("should parse single line comments", () => {
@@ -38,7 +62,9 @@ describe("Statement Parser", () => {
       expect(result.type).toBe("success");
       if (result.type === "success") {
         expect(result.value).toBeInstanceOf(AST.Comment);
-        expect((result.value as AST.Comment).text).toBe("// This is a comment");
+        expect((result.value as AST.Comment).text).toBe(
+          "// This is a comment",
+        );
       }
     });
 
@@ -103,7 +129,9 @@ describe("Statement Parser", () => {
     });
 
     it("should parse data declarations with type parameters", () => {
-      const context = createParserContext("data Maybe<T> = Just(T) | Nothing");
+      const context = createParserContext(
+        "data Maybe<T> = Just(T) | Nothing",
+      );
       const result = dataDeclaration().parse(context);
 
       expect(result.type).toBe("success");
@@ -132,7 +160,7 @@ describe("Statement Parser", () => {
   describe("effect declarations", () => {
     it("should parse effect declarations", () => {
       const context = createParserContext(
-        "effect IO { read: String -> String, write: String -> Unit }",
+        "effect IO { read: (String) => String, write: (String) => Unit }",
       );
       const result = effectDeclaration().parse(context);
 
@@ -147,7 +175,7 @@ describe("Statement Parser", () => {
 
     it("should parse exported effect declarations", () => {
       const context = createParserContext(
-        "export effect Console { log: String -> Unit }",
+        "export effect Console { log: (String) => Unit }",
       );
       const result = effectDeclaration().parse(context);
 
@@ -209,7 +237,7 @@ describe("Statement Parser", () => {
   describe("interface declarations", () => {
     it("should parse interface declarations", () => {
       const context = createParserContext(
-        "interface Printable { toString: () -> String }",
+        "interface Printable { toString: () => String }",
       );
       const result = interfaceDeclaration().parse(context);
 
@@ -224,7 +252,7 @@ describe("Statement Parser", () => {
 
     it("should parse interface declarations with extends", () => {
       const context = createParserContext(
-        "interface Collection<T> extends Iterable<T> { size: () -> Int }",
+        "interface Collection<T> extends Iterable<T> { size: () => Int }",
       );
       const result = interfaceDeclaration().parse(context);
 
@@ -291,7 +319,9 @@ describe("Statement Parser", () => {
     });
 
     it("should parse type alias declarations with type parameters", () => {
-      const context = createParserContext("type Result<T, E> = Ok(T) | Err(E)");
+      const context = createParserContext(
+        "type Result<T, E> = Ok(T) | Err(E)",
+      );
       const result = typeAliasDeclaration().parse(context);
 
       expect(result.type).toBe("success");
@@ -305,58 +335,57 @@ describe("Statement Parser", () => {
 
   describe("control flow", () => {
     it("should parse if statements", () => {
-      const context = createParserContext(`
+      const source = `
         if (x > 0) {
-          return "positive";
+          return "positive"
         } else {
-          return "negative";
+          return "negative"
         }
-      `);
+      `;
+      const context = createParserContext(source);
       const result = ifStatement().parse(context);
 
-      expect(result.type).toBe("success");
-      if (result.type === "success") {
-        expect(result.value).toBeInstanceOf(AST.IfStatement);
-        const ifStmt = result.value as AST.IfStatement;
-        expect(ifStmt.condition).toBeInstanceOf(AST.BinaryExpression);
-        expect(ifStmt.then).toBeInstanceOf(AST.Block);
-        expect(ifStmt.else_).toBeInstanceOf(AST.Block);
-      }
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.IfStatement);
+      const ifStmt = result.value as AST.IfStatement;
+      expect(ifStmt.condition).toBeInstanceOf(AST.BinaryExpression);
+      expect(ifStmt.then).toBeInstanceOf(AST.Block);
+      expect(ifStmt.else_).toBeInstanceOf(AST.Block);
     });
 
     it("should parse while statements", () => {
-      const context = createParserContext(`
-        while (i < 10) {
-          i = i + 1;
+      const source = `
+        while i < 10 {
+          i += 1
         }
-      `);
+      `;
+      const context = createParserContext(source);
       const result = whileStatement().parse(context);
 
-      expect(result.type).toBe("success");
-      if (result.type === "success") {
-        expect(result.value).toBeInstanceOf(AST.WhileStatement);
-        const whileStmt = result.value as AST.WhileStatement;
-        expect(whileStmt.condition).toBeInstanceOf(AST.BinaryExpression);
-        expect(whileStmt.body).toBeInstanceOf(AST.Block);
-      }
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.WhileStatement);
+      const whileStmt = result.value as AST.WhileStatement;
+      expect(whileStmt.condition).toBeInstanceOf(AST.BinaryExpression);
+      expect(whileStmt.body).toBeInstanceOf(AST.Block);
     });
 
     it("should parse for statements", () => {
-      const context = createParserContext(`
+      const source = `
         for (let i = 0; i < 10; i = i + 1) {
-          print(i);
+          print(i)
         }
-      `);
+      `;
+      const context = createParserContext(source);
       const result = forStatement().parse(context);
 
-      expect(result.type).toBe("success");
-      if (result.type === "success") {
-        expect(result.value).toBeInstanceOf(AST.ForStatement);
-        const forStmt = result.value as AST.ForStatement;
-        expect(forStmt.initialization).toBeInstanceOf(AST.LetDeclaration);
-        expect(forStmt.condition).toBeInstanceOf(AST.BinaryExpression);
-        expect(forStmt.update).toBeInstanceOf(AST.BinaryExpression);
-      }
+      assertSuccess(result, context, source);
+
+      expect(result.value).toBeInstanceOf(AST.ForStatement);
+      const forStmt = result.value as AST.ForStatement;
+      expect(forStmt.initialization).toHaveLength(1);
+      expect(forStmt.initialization![0]).toBeInstanceOf(AST.BinaryExpression);
+      expect(forStmt.condition).toBeInstanceOf(AST.BinaryExpression);
+      expect(forStmt.update).toBeInstanceOf(AST.BinaryExpression);
     });
 
     it("should parse for-in statements", () => {
@@ -378,8 +407,8 @@ describe("Statement Parser", () => {
 
     it("should parse for-of statements", () => {
       const context = createParserContext(`
-        for (index, value) of items {
-          print(index, value);
+        for value of items {
+          print(value);
         }
       `);
       const result = forOfStatement().parse(context);
@@ -388,7 +417,7 @@ describe("Statement Parser", () => {
       if (result.type === "success") {
         expect(result.value).toBeInstanceOf(AST.ForOfStatement);
         const forOfStmt = result.value as AST.ForOfStatement;
-        expect(forOfStmt.variable.text).toBe("index");
+        expect(forOfStmt.variable.text).toBe("value");
         expect(forOfStmt.iterable).toBeInstanceOf(AST.Identifier);
       }
     });
@@ -486,7 +515,7 @@ describe("Statement Parser", () => {
 
   describe("complex statements", () => {
     it("should parse nested control flow", () => {
-      const context = createParserContext(`
+      const source = `
         if (x > 0) {
           for (let i = 0; i < x; i = i + 1) {
             if (i % 2 == 0) {
@@ -495,13 +524,16 @@ describe("Statement Parser", () => {
             print(i);
           }
         }
-      `);
+      `;
+      const context = createParserContext(source);
       const result = statement().parse(context);
 
-      expect(result.type).toBe("success");
-      if (result.type === "success") {
-        expect(result.value).toBeInstanceOf(AST.IfStatement);
-      }
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.IfStatement);
+      const ifStmt = result.value as AST.IfStatement;
+      expect(ifStmt.condition).toBeInstanceOf(AST.BinaryExpression);
+      expect(ifStmt.then).toBeInstanceOf(AST.Block);
+      expect(ifStmt.else_).toBeNull();
     });
 
     it("should parse mixed declarations and statements", () => {
@@ -509,12 +541,28 @@ describe("Statement Parser", () => {
         let x = 42;
         fun add(a: Int, b: Int): Int => a + b;
         if (x > 0) {
-          return add(x, 1);
+          add(x, 1);
         }
       `);
-      const result = statement().parse(context);
+      const letDeclaration = statement().parse(context);
+      expect(letDeclaration.type).toBe("success");
+      if (letDeclaration.type === "success") {
+        expect(letDeclaration.value).toBeInstanceOf(AST.LetDeclaration);
+      }
 
-      expect(result.type).toBe("success");
+      const functionDeclaration = statement().parse(context);
+      expect(functionDeclaration.type).toBe("success");
+      if (functionDeclaration.type === "success") {
+        expect(functionDeclaration.value).toBeInstanceOf(
+          AST.FunctionDeclaration,
+        );
+      }
+
+      const ifStatement = statement().parse(context);
+      expect(ifStatement.type).toBe("success");
+      if (ifStatement.type === "success") {
+        expect(ifStatement.value).toBeInstanceOf(AST.IfStatement);
+      }
     });
   });
 });

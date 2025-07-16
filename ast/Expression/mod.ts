@@ -1,5 +1,6 @@
 export * from "./BinaryExpression.ts";
 export * from "./Block.ts";
+export * from "./CallExpression.ts";
 export * from "./Expression.ts";
 export * from "./FunctionExpression.ts";
 export * from "./Literal/mod.ts";

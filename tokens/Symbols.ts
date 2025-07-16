@@ -24,6 +24,12 @@ export const SYMBOLS = {
 
   // Assignment and Arrow
   Assign: "=",
+  PlusAssign: "+=",
+  MinusAssign: "-=",
+  MultiplyAssign: "*=",
+  DivideAssign: "/=",
+  ModulusAssign: "%=",
+  ExponentAssign: "**=",
   Arrow: "=>",
 
   // Logical Operators

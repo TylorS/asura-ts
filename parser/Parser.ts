@@ -415,10 +415,12 @@ export function optional<T>(
 ): Parser<T | null> {
   return {
     parse(context: ParserContext): ParseResult<T | null> {
+      const start = context.getPosition();
       const result = parser.parse(context);
       if (result.type === "success") {
         return result;
       }
+      context.setPosition(start);
       return new ParseSuccess(null);
     },
     pipe,
@@ -476,7 +478,7 @@ export function map<T, U>(
   };
 }
 
-export function seq<Parsers extends ReadonlyArray<Parser.Any>>(
+export function sequence<Parsers extends ReadonlyArray<Parser.Any>>(
   ...parsers: Parsers
 ): Parser<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> }> {
   return {
@@ -500,6 +502,23 @@ export function seq<Parsers extends ReadonlyArray<Parser.Any>>(
     },
     pipe,
   };
+}
+
+export function seq<Parsers extends ReadonlyArray<Parser.Any>>(
+  ...parsers: Parsers
+): Parser<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> }> {
+  return sequence(
+    zeroOrMore(WHITESPACE_OR_NEWLINE),
+    ...parsers.flatMap((
+      parser,
+    ) => [parser, zeroOrMore(WHITESPACE_OR_NEWLINE)]),
+  ).pipe(
+    map((results) =>
+      results.filter((_, i) => i % 2 === 1) as {
+        [K in keyof Parsers]: Parser.Type<Parsers[K]>;
+      }
+    ),
+  );
 }
 
 export function zeroOrMore<T>(
@@ -679,15 +698,19 @@ export function precedence<T>(
       // left-associative: a op b op c = ((a op b) op c)
       return {
         parse(ctx) {
+          skipWhitespace(ctx);
           let result = next.parse(ctx);
           if (result.type !== "success") return result;
+          skipWhitespace(ctx);
 
           while (true) {
             let matched = false;
             for (const opParser of ops) {
               const opRes = opParser.parse(ctx);
+              skipWhitespace(ctx);
               if (opRes.type === "success") {
                 const right = next.parse(ctx);
+                skipWhitespace(ctx);
                 if (right.type !== "success") return right;
                 result = new ParseSuccess(
                   opRes.value(result.value, right.value),
@@ -708,13 +731,17 @@ export function precedence<T>(
       // right-associative: a op b op c = (a op (b op c))
       return {
         parse(ctx) {
+          skipWhitespace(ctx);
           const result = next.parse(ctx);
           if (result.type !== "success") return result;
 
           for (const opParser of ops) {
+            skipWhitespace(ctx);
             const opRes = opParser.parse(ctx);
             if (opRes.type === "success") {
+              skipWhitespace(ctx);
               const right = makeLevel(index).parse(ctx);
+              skipWhitespace(ctx);
               if (right.type !== "success") return right;
               return new ParseSuccess(opRes.value(result.value, right.value));
             }
@@ -728,13 +755,17 @@ export function precedence<T>(
     // non-associative: only one op allowed at this level
     return {
       parse(ctx) {
+        skipWhitespace(ctx);
         const result = next.parse(ctx);
         if (result.type !== "success") return result;
 
         for (const opParser of ops) {
+          skipWhitespace(ctx);
           const opRes = opParser.parse(ctx);
           if (opRes.type === "success") {
+            skipWhitespace(ctx);
             const right = next.parse(ctx);
+            skipWhitespace(ctx);
             if (right.type !== "success") return right;
             return new ParseSuccess(opRes.value(result.value, right.value));
           }
@@ -745,6 +776,10 @@ export function precedence<T>(
     };
   }
   return makeLevel(0);
+}
+
+function skipWhitespace(ctx: ParserContext) {
+  return zeroOrMore(WHITESPACE_OR_NEWLINE).parse(ctx);
 }
 
 // Type for unary operator parser: returns a function to transform the operand
@@ -769,43 +804,38 @@ export function unary<T>(
         }
       }
 
-      if (result === undefined) {
-        return atom.parse(ctx);
-      }
-
+      if (result === undefined) return atom.parse(ctx);
       return result;
     },
     pipe,
   };
 }
 
-// Type for chain operator parser: returns a function to combine left/right
-type ChainOperatorParser<T> = Parser<(left: T, right: T) => T>;
-
 // Chain combinator for left-associative chaining (like method calls, property access)
-export function chain<T>(
-  atom: Parser<T>,
-  op: ChainOperatorParser<T>,
-): Parser<T> {
-  return {
-    parse(ctx) {
-      let result = atom.parse(ctx);
-      if (result.type !== "success") return result;
+export function chain<T, U>(
+  op: Parser<U>,
+  join: (left: T, right: U) => T,
+) {
+  return (atom: Parser<T>): Parser<T> => {
+    return {
+      parse(ctx) {
+        let result: ParseResult<T> = atom.parse(ctx);
+        if (result.type !== "success") return result;
 
-      // Chain left-associatively: a op b op c = ((a op b) op c)
-      while (true) {
-        const opRes = op.parse(ctx);
-        if (opRes.type !== "success") break;
+        while (true) {
+          const opRes = op.parse(ctx);
+          if (opRes.type !== "success") break;
 
-        const right = atom.parse(ctx);
-        if (right.type !== "success") return right;
+          const right = atom.parse(ctx);
+          if (right.type !== "success") return right;
 
-        result = new ParseSuccess(opRes.value(result.value, right.value));
-      }
+          result = new ParseSuccess(join(result.value, opRes.value));
+        }
 
-      return result;
-    },
-    pipe,
+        return result;
+      },
+      pipe,
+    };
   };
 }
 

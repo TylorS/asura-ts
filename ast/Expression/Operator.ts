@@ -15,6 +15,14 @@ export type Operator =
   | ">="
   | "&&"
   | "||"
+  // Assignment Operators
+  | "="
+  | "+="
+  | "-="
+  | "*="
+  | "/="
+  | "%="
+  | "**="
   // Unary Operators
   | "-"
   | "!";

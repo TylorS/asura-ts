@@ -6,16 +6,16 @@ import { block } from "./Statement.ts";
 import { effectRecordSignature, type, typeParametersList } from "./Type.ts";
 
 export function expression(): Parser.Parser<AST.Expression> {
-  return Parser.lazy(binaryExpression);
+  return Parser.or(
+    Parser.lazy(binaryExpression),
+    Parser.lazy(parenthesizedExpression),
+  );
 }
 
 function parenthesizedExpression(): Parser.Parser<AST.Expression> {
-  return Parser.seq(
-    Parser.symbol("("),
-    Parser.lazy(expression),
-    Parser.symbol(")"),
-  ).pipe(
-    Parser.map(([_open, content, _close]) => content),
+  return Parser.lazy(expression).pipe(
+    Parser.delimitedBy(Parser.symbol("("), Parser.symbol(")")),
+    Parser.map(({ content }) => content),
   );
 }
 
@@ -98,7 +98,7 @@ export function literals() {
   );
 }
 
-export function regexLiteral() {
+export function regexLiteral(): Parser.Parser<AST.RegexLiteral> {
   return {
     parse(context: Parser.ParserContext): Parser.ParseResult<AST.RegexLiteral> {
       const startToken = context.peek();
@@ -109,7 +109,7 @@ export function regexLiteral() {
       if (open.kind !== "Symbol" || open.text !== "/") {
         return Parser.ParseFailure.error(
           DiagnosticCode.UNEXPECTED_TOKEN,
-          "Expected '/'",
+          `Expected '/' but got ${open.kind}`,
           open.span,
         );
       }
@@ -529,9 +529,35 @@ function primaryExpression(): Parser.Parser<AST.Expression> {
     Parser.lazy(matchExpression),
     Parser.lazy(functionExpression),
     Parser.lazy(unaryExpression),
-    Parser.token("Identifier").pipe(
-      Parser.map((token) => new AST.Identifier(token.text, token.span)),
+    Parser.lazy(callExpression),
+  );
+}
+
+function callExpression(): Parser.Parser<AST.Expression> {
+  return Parser.seq(
+    Parser.token("Identifier"),
+    Parser.optional(
+      Parser.seq(
+        Parser.symbol("("),
+        Parser.optional(
+          expression().pipe(
+            Parser.separatedBy(Parser.symbol(",")),
+          ),
+        ),
+        Parser.symbol(")"),
+      ),
     ),
+  ).pipe(
+    Parser.map(([identifier, args]) => {
+      if (!args) {
+        return new AST.Identifier(identifier.text, identifier.span);
+      }
+      return new AST.CallExpression(
+        new AST.Identifier(identifier.text, identifier.span),
+        args[1] ?? [], // args[1] is the optional expression list
+        new AST.Span(identifier.span.start, args[2].span.end), // args[2] is the closing parenthesis
+      );
+    }),
   );
 }
 
@@ -539,7 +565,31 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
   return Parser.precedence(
     Parser.lazy(primaryExpression), // Use primaryExpression as the base parser
     [
-      // Logical OR (||) (left-associative) - lowest precedence
+      // Assignment (=, +=, -=, *=, /=, %=, **=) (right-associative) - lowest precedence
+      Parser.PrecedenceLevel.right(
+        Parser.or(
+          Parser.symbol("="),
+          Parser.symbol("+="),
+          Parser.symbol("-="),
+          Parser.symbol("*="),
+          Parser.symbol("/="),
+          Parser.symbol("%="),
+          Parser.symbol("**="),
+        ).pipe(
+          Parser.map(
+            (symbol) =>
+            (left: AST.Expression, right: AST.Expression): AST.Expression =>
+              new AST.BinaryExpression(
+                left,
+                new AST.OperatorNode(symbol.text, symbol.span),
+                right,
+                new AST.Span(left.span.start, right.span.end),
+              ),
+          ),
+        ),
+      ),
+
+      // Logical OR (||) (left-associative)
       Parser.PrecedenceLevel.left(
         Parser.symbol("||").pipe(
           Parser.map(

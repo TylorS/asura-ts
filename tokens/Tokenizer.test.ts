@@ -17,19 +17,12 @@ describe("Tokenizer", () => {
     expect(tokens).toMatchInlineSnapshot(`
       [
         "export",
-        "Whitespace(" ")",
         "data",
-        "Whitespace(" ")",
         "effect",
-        "Whitespace(" ")",
         "fun",
-        "Whitespace(" ")",
         "import",
-        "Whitespace(" ")",
         "interface",
-        "Whitespace(" ")",
         "let",
-        "Whitespace(" ")",
         "type",
       ]
     `);

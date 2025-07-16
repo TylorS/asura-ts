@@ -116,7 +116,7 @@ describe("Statement Parser", () => {
 
   describe("data declarations", () => {
     it("should parse simple data declarations", () => {
-      const context = createParserContext("data Option = Some | None");
+      const context = createParserContext("data Option = Some(A) | None");
       const result = dataDeclaration().parse(context);
 
       expect(result.type).toBe("success");

@@ -199,9 +199,9 @@ export function dataDeclaration(): Parser.Parser<AST.DataDeclaration> {
 
 function dataConstructor(): Parser.Parser<AST.DataConstructor> {
   return Parser.or(
-    voidConstructor(),
     tupleConstructor(),
     recordConstructor(),
+    voidConstructor(),
   );
 }
 
@@ -214,22 +214,19 @@ function voidConstructor(): Parser.Parser<AST.VoidConstructor> {
 function tupleConstructor(): Parser.Parser<AST.TupleConstructor> {
   return Parser.seq(
     Parser.token("Identifier"),
-    Parser.symbol("("),
     Parser.or(
       type(),
       recordConstructorField(),
     ).pipe(
       Parser.separatedBy(Parser.symbol(",")),
-    ).pipe(
       Parser.delimitedBy(Parser.symbol("("), Parser.symbol(")")),
     ),
-    Parser.symbol(")"),
   ).pipe(
-    Parser.map(([name, _lparen, fields, _rparen]) => {
+    Parser.map(([name, fields]) => {
       return new AST.TupleConstructor(
         name,
         fields.content,
-        new AST.Span(name.span.start, _rparen.span.end),
+        new AST.Span(name.span.start, fields.after.span.end),
       );
     }),
   );

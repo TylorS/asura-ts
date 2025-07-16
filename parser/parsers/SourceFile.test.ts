@@ -124,6 +124,9 @@ describe("SourceFile Parser", () => {
     const source = `
       fun add(x: Int, y: Int): Int => x + y;
       let result = add(1, 2);
+      data Option<T> = Some(T) | None;
+      effect IO { read: (String) => String };
+      interface Printable { toString: () => String };
     `
     const context = createParserContext(source);
     const result = sourceFile("test.ts").parse(context);
@@ -131,9 +134,12 @@ describe("SourceFile Parser", () => {
     assertSuccess(result, context, source);
     expect(result.value).toBeInstanceOf(AST.SourceFile);
     const file = result.value as AST.SourceFile;
-    expect(file.statements).toHaveLength(2);
+    expect(file.statements).toHaveLength(5);
     expect(file.statements[0]).toBeInstanceOf(AST.FunctionDeclaration);
     expect(file.statements[1]).toBeInstanceOf(AST.LetDeclaration);
+    expect(file.statements[2]).toBeInstanceOf(AST.DataDeclaration);
+    expect(file.statements[3]).toBeInstanceOf(AST.EffectDeclaration);
+    expect(file.statements[4]).toBeInstanceOf(AST.InterfaceDeclaration);
   });
 
   it("should parse source file with control flow", () => {

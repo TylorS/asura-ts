@@ -5,7 +5,8 @@ import { statement } from "./Statement.ts";
 const INITIAL_SPAN = new AST.SpanLocation(1, 1, 0);
 
 export function sourceFile(fileName: string): Parser.Parser<AST.SourceFile> {
-  return Parser.zeroOrMore(statement()).pipe(
+  return statement().pipe(
+    Parser.zeroOrMore,
     Parser.map((statements) =>
       new AST.SourceFile(
         fileName,

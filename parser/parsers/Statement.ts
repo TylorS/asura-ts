@@ -680,31 +680,31 @@ export function expressionStatement(): Parser.Parser<AST.ExpressionStatement> {
   );
 }
 
+const BLOCK_SEPARATOR = Parser.zeroOrMore(Parser.or(
+  Parser.token("Whitespace"),
+  Parser.token("Newline"),
+  Parser.symbol(";"),
+));
+
 export function block<T = never>(
   ...statements: Parser.Parser<T>[]
 ): Parser.Parser<AST.Block<T>> {
-  return Parser.seq(
-    Parser.zeroOrMore(Parser.or(
-      Parser.token("Whitespace"),
-      Parser.token("Newline"),
-    )),
-    Parser.symbol("{"),
-    Parser.zeroOrMore(
-      Parser.or(returnStatement(), Parser.lazy(statement), ...statements),
-    ),
-    Parser.symbol("}"),
-    Parser.zeroOrMore(Parser.or(
-      Parser.token("Whitespace"),
-      Parser.token("Newline"),
-    )),
-  ).pipe(
-    Parser.map(([_ws, before, content, after, _ws2]) =>
-      new AST.Block<T>(
-        content,
-        new AST.Span(before.span.start, after.span.end),
-      )
-    ),
-  );
+  return Parser.or(
+    Parser.lazy(statement),
+    returnStatement().pipe(withStatementTerminator),
+    ...statements.map(withStatementTerminator),
+  )
+    .pipe(
+      Parser.separatedBy(BLOCK_SEPARATOR),
+      Parser.optional,
+      Parser.delimitedBy(Parser.symbol("{"), Parser.symbol("}")),
+      Parser.map(({ before, content, after }) =>
+        new AST.Block<T>(
+          content ?? [],
+          new AST.Span(before.span.start, after.span.end),
+        )
+      ),
+    );
 }
 
 export function returnStatement(): Parser.Parser<AST.ReturnStatement> {

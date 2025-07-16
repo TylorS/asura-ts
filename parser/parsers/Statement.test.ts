@@ -515,16 +515,14 @@ describe("Statement Parser", () => {
 
   describe("complex statements", () => {
     it("should parse nested control flow", () => {
-      const source = `
-        if (x > 0) {
-          for (let i = 0; i < x; i = i + 1) {
-            if (i % 2 == 0) {
-              continue;
-            }
-            print(i);
-          }
-        }
-      `;
+      const source = `if (x > 0) {
+  for (let i = 0; i < x; i = i + 1) {
+    if (i % 2 == 0) {
+      continue;
+    }
+    print(i);
+  }
+}`;
       const context = createParserContext(source);
       const result = statement().parse(context);
 

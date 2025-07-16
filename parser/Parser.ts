@@ -6,7 +6,7 @@ import {
   DiagnosticRelatedInformation,
   DiagnosticSeverity,
 } from "../diagnostics/mod.ts";
-import { Span } from "../tokens/Span.ts";
+import { Span, SpanLocation } from "../tokens/Span.ts";
 import {
   GetSymbolName,
   getSymbolName,
@@ -14,6 +14,8 @@ import {
 } from "../tokens/Symbols.ts";
 import { Identifier, Symbol, Token } from "../tokens/Token.ts";
 import { pipe, Pipeable, pipeArguments } from "./Pipeable.ts";
+
+const EMPTY_SPAN = new Span(new SpanLocation(1, 1, 0), new SpanLocation(1, 1, 0));
 
 export class ParserContext {
   private position: number = 0;
@@ -35,7 +37,7 @@ export class ParserContext {
       return token.span;
     }
 
-    return this.tokens.at(-1)!.span;
+    return this.tokens.at(-1)?.span ?? EMPTY_SPAN;
   }
 
   consume<K extends Token["kind"]>(): Extract<Token, { kind: K }> {
@@ -507,18 +509,31 @@ export function sequence<Parsers extends ReadonlyArray<Parser.Any>>(
 export function seq<Parsers extends ReadonlyArray<Parser.Any>>(
   ...parsers: Parsers
 ): Parser<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> }> {
-  return sequence(
-    zeroOrMore(WHITESPACE_OR_NEWLINE),
-    ...parsers.flatMap((
-      parser,
-    ) => [parser, zeroOrMore(WHITESPACE_OR_NEWLINE)]),
-  ).pipe(
-    map((results) =>
-      results.filter((_, i) => i % 2 === 1) as {
-        [K in keyof Parsers]: Parser.Type<Parsers[K]>;
+  return {
+    parse(
+      context: ParserContext,
+    ): ParseResult<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> }> {
+      const results: unknown[] = [];
+      skipWhitespace(context);
+
+      for (const parser of parsers) {
+        const result = parser.parse(context);
+        if (result.type === "success") {
+          skipWhitespace(context);
+          results.push(result.value);
+        } else {
+          return result;
+        }
       }
-    ),
-  );
+
+      skipWhitespace(context);
+
+      return new ParseSuccess(
+        results as { [K in keyof Parsers]: Parser.Type<Parsers[K]> },
+      );
+    },
+    pipe,
+  };
 }
 
 export function zeroOrMore<T>(
@@ -528,9 +543,11 @@ export function zeroOrMore<T>(
     parse(context: ParserContext): ParseResult<T[]> {
       const startPosition = context.getPosition();
       const results: T[] = [];
-      while (true) {
+      while (!context.isAtEnd()) {
+        skipWhitespace(context);
         const result = parser.parse(context);
         if (result.type === "success") {
+          skipWhitespace(context);
           results.push(result.value);
         } else {
           break;
@@ -703,7 +720,7 @@ export function precedence<T>(
           if (result.type !== "success") return result;
           skipWhitespace(ctx);
 
-          while (true) {
+          while (!ctx.isAtEnd()) {
             let matched = false;
             for (const opParser of ops) {
               const opRes = opParser.parse(ctx);
@@ -778,8 +795,16 @@ export function precedence<T>(
   return makeLevel(0);
 }
 
-function skipWhitespace(ctx: ParserContext) {
-  return zeroOrMore(WHITESPACE_OR_NEWLINE).parse(ctx);
+function skipWhitespace(context: ParserContext) {
+  let token = context.peek();
+
+  while (
+    token !== undefined &&
+    (token.kind === "Whitespace" || token.kind === "Newline")
+  ) {
+    context.consume();
+    token = context.peek();
+  }
 }
 
 // Type for unary operator parser: returns a function to transform the operand
@@ -822,7 +847,7 @@ export function chain<T, U>(
         let result: ParseResult<T> = atom.parse(ctx);
         if (result.type !== "success") return result;
 
-        while (true) {
+        while (!ctx.isAtEnd()) {
           const opRes = op.parse(ctx);
           if (opRes.type !== "success") break;
 

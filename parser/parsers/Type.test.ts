@@ -452,7 +452,6 @@ describe("Type Parser", () => {
       const context = createParserContext(
         "{ user: { name: String, age: Int }, active: Boolean }",
       );
-      console.log(context.tokens);
       const result = recordType().parse(context);
 
       expect(result.type).toBe("success");

@@ -12,13 +12,7 @@ import {
   getSymbolName,
   SymbolValue,
 } from "../tokens/Symbols.ts";
-import {
-  Identifier,
-  Newline,
-  Symbol,
-  Token,
-  Whitespace,
-} from "../tokens/Token.ts";
+import { Identifier, Symbol, Token } from "../tokens/Token.ts";
 import { pipe, Pipeable, pipeArguments } from "./Pipeable.ts";
 
 export class ParserContext {
@@ -482,7 +476,7 @@ export function map<T, U>(
   };
 }
 
-export function sequence<Parsers extends ReadonlyArray<Parser.Any>>(
+export function seq<Parsers extends ReadonlyArray<Parser.Any>>(
   ...parsers: Parsers
 ): Parser<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> }> {
   return {
@@ -506,21 +500,6 @@ export function sequence<Parsers extends ReadonlyArray<Parser.Any>>(
     },
     pipe,
   };
-}
-
-// Sequence which strips optional/unneeded whitespace
-export function seq<Parsers extends ReadonlyArray<Parser.Any>>(
-  ...parsers: Parsers
-): Parser<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> }> {
-  return sequence(
-    ...parsers.flatMap((parser, i) =>
-      i < parsers.length - 1
-        ? [parser, zeroOrMore(WHITESPACE_OR_NEWLINE)]
-        : [parser]
-    ),
-  ).pipe(
-    map((results) => results.filter((_, i) => i % 2 === 0)),
-  ) as Parser<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> }>;
 }
 
 export function zeroOrMore<T>(
@@ -547,16 +526,12 @@ export function zeroOrMore<T>(
   };
 }
 
-export function whitespace(): Parser<ReadonlyArray<Whitespace | Newline>> {
-  return zeroOrMore(WHITESPACE_OR_NEWLINE);
-}
-
 export function oneOrMore<T>(
   parser: Parser<T>,
 ): Parser<T[]> {
   return {
     parse(context: ParserContext): ParseResult<T[]> {
-      return sequence(parser, zeroOrMore(parser)).pipe(
+      return seq(parser, zeroOrMore(parser)).pipe(
         map(([first, rest]) => [first, ...rest]),
       ).parse(context);
     },
@@ -585,13 +560,8 @@ export function separatedBy<U>(
   separator: Parser<U>,
 ) {
   return <T>(parser: Parser<T>): Parser<T[]> => {
-    return seq(optional(parser), zeroOrMore(seq(separator, parser))).pipe(
-      map((
-        [first, rest],
-      ) => [
-        ...(first === null ? [] : [first]),
-        ...rest.map(([_, value]) => value),
-      ]),
+    return seq(parser, zeroOrMore(seq(separator, parser))).pipe(
+      map(([first, rest]) => [first, ...rest.map(([_, value]) => value)]),
     );
   };
 }

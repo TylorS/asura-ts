@@ -33,7 +33,6 @@ import {
   MatchKeyword,
   MultiLineComment,
   MutableKeyword,
-  Newline,
   OfKeyword,
   ReturnKeyword,
   StringLiteral,
@@ -41,7 +40,6 @@ import {
   Token,
   TypeKeyword,
   WhileKeyword,
-  Whitespace,
   WithKeyword,
 } from "./Token.ts";
 
@@ -168,11 +166,7 @@ export class IncrementalTokenizer {
   private handleStartState(char: string): Token | null {
     // Handle whitespace - emit tokens instead of skipping
     if (char === "\n") {
-      const span = new Span(
-        this.getCurrentLocation(),
-        this.getCurrentLocation(),
-      );
-      return new Newline(span);
+      return null
     }
 
     if (/[ \t\r]/.test(char)) {
@@ -391,14 +385,14 @@ export class IncrementalTokenizer {
     }
 
     // End of whitespace
-    const token = new Whitespace(this.currentBuffer, this.createSpan());
+    // const token = new Whitespace(this.currentBuffer, this.createSpan());
     this.resetToStart();
 
     // Don't advance - let the next iteration handle this character
     this.position--;
     this.column--;
 
-    return token;
+    return null;
   }
 
   private handleMultiCommentState(char: string): Token | null {
@@ -604,7 +598,8 @@ export class IncrementalTokenizer {
         return this.createOperatorToken(this.currentBuffer);
 
       case TokenState.IN_WHITESPACE:
-        return new Whitespace(this.currentBuffer, this.createSpan());
+        return null;
+        // return new Whitespace(this.currentBuffer, this.createSpan());
 
       case TokenState.IN_COMMENT_SINGLE:
         return new Comment(this.currentBuffer, this.createSpan());

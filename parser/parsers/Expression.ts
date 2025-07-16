@@ -6,16 +6,7 @@ import { block } from "./Statement.ts";
 import { effectRecordSignature, type, typeParametersList } from "./Type.ts";
 
 export function expression(): Parser.Parser<AST.Expression> {
-  return Parser.or(
-    Parser.lazy(literals),
-    Parser.lazy(arrayLiteral),
-    Parser.lazy(recordLiteral),
-    Parser.lazy(matchExpression),
-    Parser.lazy(functionExpression),
-    Parser.lazy(parenthesizedExpression),
-    // Parser.lazy(unaryExpression),
-    Parser.lazy(binaryExpression),
-  );
+  return Parser.lazy(binaryExpression);
 }
 
 function parenthesizedExpression(): Parser.Parser<AST.Expression> {
@@ -31,10 +22,11 @@ function parenthesizedExpression(): Parser.Parser<AST.Expression> {
 export function arrayLiteral(): Parser.Parser<AST.ArrayLiteral> {
   return expression().pipe(
     Parser.separatedBy(Parser.symbol(",")),
+    Parser.optional,
     Parser.delimitedBy(Parser.symbol("["), Parser.symbol("]")),
     Parser.map(({ before, content, after }) =>
       new AST.ArrayLiteral(
-        content,
+        content ?? [],
         new AST.Span(before.span.start, after.span.end),
       )
     ),
@@ -44,10 +36,11 @@ export function arrayLiteral(): Parser.Parser<AST.ArrayLiteral> {
 export function recordLiteral(): Parser.Parser<AST.RecordLiteral> {
   return field().pipe(
     Parser.separatedBy(Parser.symbol(",")),
+    Parser.optional,
     Parser.delimitedBy(Parser.symbol("{"), Parser.symbol("}")),
     Parser.map(({ before, content, after }) =>
       new AST.RecordLiteral(
-        content,
+        content ?? [],
         new AST.Span(before.span.start, after.span.end),
       )
     ),
@@ -107,10 +100,10 @@ export function literals() {
 
 export function regexLiteral() {
   return {
-    parse(context: Parser.ParserContext): Parser.ParseResult<AST.RegexLiteral> { 
+    parse(context: Parser.ParserContext): Parser.ParseResult<AST.RegexLiteral> {
       const startToken = context.peek();
       const startSpan = startToken.span;
-      
+
       // Parse opening slash
       const open = context.peek();
       if (open.kind !== "Symbol" || open.text !== "/") {
@@ -121,46 +114,50 @@ export function regexLiteral() {
         );
       }
       context.consume();
-      
+
       // Parse regex pattern
-      let pattern: string = '';
+      let pattern: string = "";
       let current = context.peek();
       let depth = 0; // Track bracket/brace depth
       let inCharacterClass = false;
       let escaped = false;
-      
-      while (current && !(current.kind === "Symbol" && current.text === "/" && depth === 0 && !inCharacterClass)) {
-        const currentText = current.toString()
-        
+
+      while (
+        current &&
+        !(current.kind === "Symbol" && current.text === "/" && depth === 0 &&
+          !inCharacterClass)
+      ) {
+        const currentText = current.toString();
+
         if (escaped) {
           // Handle escaped characters
-          pattern += '\\' + currentText;
+          pattern += "\\" + currentText;
           escaped = false;
-        } else if (currentText === '\\') {
+        } else if (currentText === "\\") {
           // Start escape sequence
           pattern += currentText;
           escaped = true;
-        } else if (currentText === '[' && !inCharacterClass) {
+        } else if (currentText === "[" && !inCharacterClass) {
           // Start character class
           pattern += currentText;
           inCharacterClass = true;
-        } else if (currentText === ']' && inCharacterClass) {
+        } else if (currentText === "]" && inCharacterClass) {
           // End character class
           pattern += currentText;
           inCharacterClass = false;
-        } else if (currentText === '(' && !inCharacterClass) {
+        } else if (currentText === "(" && !inCharacterClass) {
           // Start group
           pattern += currentText;
           depth++;
-        } else if (currentText === ')' && !inCharacterClass && depth > 0) {
+        } else if (currentText === ")" && !inCharacterClass && depth > 0) {
           // End group
           pattern += currentText;
           depth--;
-        } else if (currentText === '{' && !inCharacterClass) {
+        } else if (currentText === "{" && !inCharacterClass) {
           // Start quantifier
           pattern += currentText;
           depth++;
-        } else if (currentText === '}' && !inCharacterClass && depth > 0) {
+        } else if (currentText === "}" && !inCharacterClass && depth > 0) {
           // End quantifier
           pattern += currentText;
           depth--;
@@ -168,10 +165,10 @@ export function regexLiteral() {
           // Regular character
           pattern += currentText;
         }
-        
+
         context.consume();
         current = context.peek();
-        
+
         // Check for end of input
         if (!current) {
           return Parser.ParseFailure.error(
@@ -181,7 +178,7 @@ export function regexLiteral() {
           );
         }
       }
-      
+
       // Parse closing slash
       const close = context.peek();
       if (close.kind !== "Symbol" || close.text !== "/") {
@@ -192,11 +189,11 @@ export function regexLiteral() {
         );
       }
       context.consume();
-      
+
       // Parse flags
-      let flags: string = '';
+      let flags: string = "";
       current = context.peek();
-      
+
       while (current && current.kind === "Identifier") {
         const flagChar = current.text;
         // Validate flag characters (only allow valid regex flags)
@@ -215,22 +212,28 @@ export function regexLiteral() {
           break;
         }
       }
-      
+
       const endSpan = context.peek() ? context.peek().span : startSpan;
-      
+
       return new Parser.ParseSuccess(
-        new AST.RegexLiteral(pattern, flags || null, new AST.Span(startSpan.start, endSpan.end)),
+        new AST.RegexLiteral(
+          pattern,
+          flags || null,
+          new AST.Span(startSpan.start, endSpan.end),
+        ),
       );
     },
     pipe,
-  }
+  };
 }
 
 export function matchExpression(): Parser.Parser<AST.MatchExpression> {
   return Parser.seq(
     Parser.token("match"),
     expression(),
-    Parser.oneOrMore(matchCase()).pipe(
+    matchCase().pipe(
+      Parser.separatedBy(Parser.symbol(",")),
+      Parser.optional,
       Parser.delimitedBy(Parser.symbol("{"), Parser.symbol("}")),
     ),
   ).pipe(
@@ -244,7 +247,7 @@ export function matchExpression(): Parser.Parser<AST.MatchExpression> {
       ) => {
         return new AST.MatchExpression(
           expression,
-          cases,
+          cases ?? [],
           new AST.Span(match.span.start, after.span.end),
         );
       },
@@ -274,11 +277,14 @@ function matchCase(): Parser.Parser<AST.MatchCase> {
 export function returnExpressionOrBlock(): Parser.Parser<
   AST.Expression | AST.Block
 > {
-  return Parser.or(
-    Parser.seq(Parser.symbol("=>"), expression()).pipe(
-      Parser.map(([_arrow, expression]) => expression),
+  return Parser.seq(
+    Parser.symbol("=>"),
+    Parser.or(
+      Parser.lazy(block),
+      expression(),
     ),
-    Parser.lazy(block),
+  ).pipe(
+    Parser.map(([_arrow, expressionOrBlock]) => expressionOrBlock),
   );
 }
 
@@ -303,14 +309,17 @@ function literalPattern(): Parser.Parser<AST.LiteralPattern> {
 function variablePattern(): Parser.Parser<AST.VariablePattern> {
   return Parser.seq(
     Parser.token("Identifier"),
-    Parser.optional(Parser.symbol(":")),
+    Parser.symbol(":"),
     type(),
   ).pipe(
-    Parser.map(([identifier, _colon, type]) =>
+    Parser.map(([identifier, _, type]) =>
       new AST.VariablePattern(
         identifier,
         type,
-        new AST.Span(identifier.span.start, type.span.end),
+        new AST.Span(
+          identifier.span.start,
+          type?.span.end ?? identifier.span.end,
+        ),
       )
     ),
   );
@@ -468,20 +477,17 @@ export function functionParameter(): Parser.Parser<AST.FunctionParameter> {
   return Parser.seq(
     Parser.or(Parser.token("Identifier"), Parser.keywordAsIdentifer()),
     Parser.symbol(":"),
-    Parser.optional(effectRecordSignature()),
     type(),
   ).pipe(
     Parser.map((
       [
         identifier,
         _colon,
-        effectRecordSignature,
         type,
       ],
     ) =>
       new AST.FunctionParameter(
         identifier,
-        effectRecordSignature,
         type,
         new AST.Span(identifier.span.start, type.span.end),
       )
@@ -499,7 +505,7 @@ export function unaryOperator(): Parser.Parser<AST.OperatorNode> {
 }
 
 export function unaryExpression(): Parser.Parser<AST.UnaryExpression> {
-  return Parser.sequence(
+  return Parser.seq(
     unaryOperator(),
     expression(),
   ).pipe(
@@ -513,8 +519,8 @@ export function unaryExpression(): Parser.Parser<AST.UnaryExpression> {
   );
 }
 
-// Atom parser for expressions that don't involve operators
-function atom(): Parser.Parser<AST.Expression> {
+// Primary expression parser for expressions that don't involve binary operators
+function primaryExpression(): Parser.Parser<AST.Expression> {
   return Parser.or(
     Parser.lazy(parenthesizedExpression),
     Parser.lazy(literals),
@@ -523,16 +529,19 @@ function atom(): Parser.Parser<AST.Expression> {
     Parser.lazy(matchExpression),
     Parser.lazy(functionExpression),
     Parser.lazy(unaryExpression),
+    Parser.token("Identifier").pipe(
+      Parser.map((token) => new AST.Identifier(token.text, token.span)),
+    ),
   );
 }
 
 export function binaryExpression(): Parser.Parser<AST.Expression> {
   return Parser.precedence(
-    Parser.lazy(atom),  // Use atom as the base parser
+    Parser.lazy(primaryExpression), // Use primaryExpression as the base parser
     [
-      // Exponentiation (right-associative)
-      Parser.PrecedenceLevel.right(
-        Parser.symbol("**").pipe(
+      // Logical OR (||) (left-associative) - lowest precedence
+      Parser.PrecedenceLevel.left(
+        Parser.symbol("||").pipe(
           Parser.map(
             (symbol) =>
             (left: AST.Expression, right: AST.Expression): AST.Expression =>
@@ -546,9 +555,9 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
         ),
       ),
 
-      // Multiplicative (*, /, %) (left-associative)
+      // Logical AND (&&) (left-associative)
       Parser.PrecedenceLevel.left(
-        Parser.symbol("*").pipe(
+        Parser.symbol("&&").pipe(
           Parser.map(
             (symbol) =>
             (left: AST.Expression, right: AST.Expression): AST.Expression =>
@@ -558,50 +567,6 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
                 right,
                 new AST.Span(left.span.start, right.span.end),
               ),
-          ),
-        ),
-        Parser.symbol("/").pipe(
-          Parser.map((symbol) => (left, right) =>
-            new AST.BinaryExpression(
-              left,
-              new AST.OperatorNode(symbol.text, symbol.span),
-              right,
-              new AST.Span(left.span.start, right.span.end),
-            )
-          ),
-        ),
-        Parser.symbol("%").pipe(
-          Parser.map((symbol) => (left, right) =>
-            new AST.BinaryExpression(
-              left,
-              new AST.OperatorNode(symbol.text, symbol.span),
-              right,
-              new AST.Span(left.span.start, right.span.end),
-            )
-          ),
-        ),
-      ),
-
-      // Additive (+, -) (left-associative)
-      Parser.PrecedenceLevel.left(
-        Parser.symbol("+").pipe(
-          Parser.map((symbol) => (left, right): AST.Expression =>
-            new AST.BinaryExpression(
-              left,
-              new AST.OperatorNode(symbol.text, symbol.span),
-              right,
-              new AST.Span(left.span.start, right.span.end),
-            )
-          ),
-        ),
-        Parser.symbol("-").pipe(
-          Parser.map((symbol) => (left, right): AST.Expression =>
-            new AST.BinaryExpression(
-              left,
-              new AST.OperatorNode(symbol.text, symbol.span),
-              right,
-              new AST.Span(left.span.start, right.span.end),
-            )
           ),
         ),
       ),
@@ -682,9 +647,21 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
         ),
       ),
 
-      // Logical AND (&&) (left-associative)
+      // Additive (+, -) (left-associative)
       Parser.PrecedenceLevel.left(
-        Parser.symbol("&&").pipe(
+        Parser.symbol("+").pipe(
+          Parser.map(
+            (symbol) =>
+            (left: AST.Expression, right: AST.Expression): AST.Expression =>
+              new AST.BinaryExpression(
+                left,
+                new AST.OperatorNode(symbol.text, symbol.span),
+                right,
+                new AST.Span(left.span.start, right.span.end),
+              ),
+          ),
+        ),
+        Parser.symbol("-").pipe(
           Parser.map(
             (symbol) =>
             (left: AST.Expression, right: AST.Expression): AST.Expression =>
@@ -698,9 +675,49 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
         ),
       ),
 
-      // Logical OR (||) (left-associative)
+      // Multiplicative (*, /, %) (left-associative)
       Parser.PrecedenceLevel.left(
-        Parser.symbol("||").pipe(
+        Parser.symbol("*").pipe(
+          Parser.map(
+            (symbol) =>
+            (left: AST.Expression, right: AST.Expression): AST.Expression =>
+              new AST.BinaryExpression(
+                left,
+                new AST.OperatorNode(symbol.text, symbol.span),
+                right,
+                new AST.Span(left.span.start, right.span.end),
+              ),
+          ),
+        ),
+        Parser.symbol("/").pipe(
+          Parser.map(
+            (symbol) =>
+            (left: AST.Expression, right: AST.Expression): AST.Expression =>
+              new AST.BinaryExpression(
+                left,
+                new AST.OperatorNode(symbol.text, symbol.span),
+                right,
+                new AST.Span(left.span.start, right.span.end),
+              ),
+          ),
+        ),
+        Parser.symbol("%").pipe(
+          Parser.map(
+            (symbol) =>
+            (left: AST.Expression, right: AST.Expression): AST.Expression =>
+              new AST.BinaryExpression(
+                left,
+                new AST.OperatorNode(symbol.text, symbol.span),
+                right,
+                new AST.Span(left.span.start, right.span.end),
+              ),
+          ),
+        ),
+      ),
+
+      // Exponentiation (right-associative) - highest precedence
+      Parser.PrecedenceLevel.right(
+        Parser.symbol("**").pipe(
           Parser.map(
             (symbol) =>
             (left: AST.Expression, right: AST.Expression): AST.Expression =>

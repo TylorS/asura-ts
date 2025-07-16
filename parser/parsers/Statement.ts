@@ -634,24 +634,38 @@ export function whileStatement(): Parser.Parser<AST.WhileStatement> {
 
 export function expressionStatement(): Parser.Parser<AST.ExpressionStatement> {
   return expression().pipe(
-    Parser.map((expression) => new AST.ExpressionStatement(expression, expression.span)),
+    Parser.map((expression) =>
+      new AST.ExpressionStatement(expression, expression.span)
+    ),
   );
 }
 
 export function block<T = never>(
   ...statements: Parser.Parser<T>[]
 ): Parser.Parser<AST.Block<T>> {
-  return Parser.sequence(
+  return Parser.seq(
     Parser.symbol("{"),
-    Parser.zeroOrMore(Parser.WHITESPACE_OR_NEWLINE),
-    Parser.zeroOrMore(Parser.or(Parser.lazy(statement), ...statements)),
-    Parser.zeroOrMore(Parser.WHITESPACE_OR_NEWLINE),
+    Parser.zeroOrMore(Parser.or(returnStatement(), Parser.lazy(statement), ...statements)),
     Parser.symbol("}"),
   ).pipe(
-    Parser.map(([before, _whitespace1, content, _whitespace2, after]) =>
+    Parser.map(([before, content, after]) =>
       new AST.Block<T>(
         content,
         new AST.Span(before.span.start, after.span.end),
+      )
+    ),
+  );
+}
+
+export function returnStatement(): Parser.Parser<AST.ReturnStatement> {
+  return Parser.seq(
+    Parser.token("return"),
+    expression(),
+  ).pipe(
+    Parser.map(([_return, expression]) =>
+      new AST.ReturnStatement(
+        expression,
+        new AST.Span(_return.span.start, expression.span.end),
       )
     ),
   );

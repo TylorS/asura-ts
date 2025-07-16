@@ -23,7 +23,6 @@ export class FunctionParameter {
 
   constructor(
     readonly name: Identifier,
-    readonly effects: EffectRecordSignature | null,
     readonly type: Type,
     readonly span: Span,
   ) {}

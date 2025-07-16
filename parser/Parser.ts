@@ -15,7 +15,10 @@ import {
 import { Identifier, Symbol, Token } from "../tokens/Token.ts";
 import { pipe, Pipeable, pipeArguments } from "./Pipeable.ts";
 
-const EMPTY_SPAN = new Span(new SpanLocation(1, 1, 0), new SpanLocation(1, 1, 0));
+const EMPTY_SPAN = new Span(
+  new SpanLocation(1, 1, 0),
+  new SpanLocation(1, 1, 0),
+);
 
 export class ParserContext {
   private position: number = 0;
@@ -544,10 +547,8 @@ export function zeroOrMore<T>(
       const startPosition = context.getPosition();
       const results: T[] = [];
       while (!context.isAtEnd()) {
-        skipWhitespace(context);
         const result = parser.parse(context);
         if (result.type === "success") {
-          skipWhitespace(context);
           results.push(result.value);
         } else {
           break;
@@ -562,14 +563,32 @@ export function zeroOrMore<T>(
   };
 }
 
+
 export function oneOrMore<T>(
   parser: Parser<T>,
 ): Parser<T[]> {
   return {
     parse(context: ParserContext): ParseResult<T[]> {
-      return seq(parser, zeroOrMore(parser)).pipe(
-        map(([first, rest]) => [first, ...rest]),
-      ).parse(context);
+      const startPosition = context.getPosition();
+      const results: T[] = [];
+      while (!context.isAtEnd()) {
+        const result = parser.parse(context);
+        if (result.type === "success") {
+          results.push(result.value);
+        } else {
+          break;
+        }
+      }
+      if (results.length < 1) {
+        context.setPosition(startPosition);
+        return ParseFailure.error(
+          DiagnosticCode.UNEXPECTED_TOKEN,
+          `Expected one or more`,
+          context.span(),
+        );
+      }
+
+      return new ParseSuccess(results);
     },
     pipe,
   };

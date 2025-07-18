@@ -1,21 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { DiagnosticCollection, DiagnosticCode, DiagnosticSeverity } from "../diagnostics/mod.ts";
+import {
+  DiagnosticCode,
+  DiagnosticCollection,
+  DiagnosticSeverity,
+} from "../diagnostics/mod.ts";
 import { formatDiagnostics } from "../diagnostics/DiagnosticFormatter.ts";
 import { Span, SpanLocation } from "../tokens/Span.ts";
 import { Token } from "../tokens/Token.ts";
-import { ParserContext, ParseError, ParsingContext } from "./Parser.ts";
+import { ParseError, ParserContext, ParsingContext } from "./Parser.ts";
 
 // Helper function to create a simple token
-function createToken(kind: Token["kind"], text: string = "", line: number = 1, column: number = 1): Token {
+function createToken(
+  kind: Token["kind"],
+  text: string = "",
+  line: number = 1,
+  column: number = 1,
+): Token {
   const span = new Span(
     new SpanLocation(line, column, 0),
-    new SpanLocation(line, column + text.length, text.length)
+    new SpanLocation(line, column + text.length, text.length),
   );
-  
+
   if (kind === "Identifier") {
     return { kind, text, span } as Token;
   }
-  
+
   return { kind, span } as Token;
 }
 
@@ -35,7 +44,7 @@ describe("ParserContext Extensions", () => {
         name: "function-declaration",
         expectedElements: ["identifier", "parameters"],
         recoveryStrategies: ["StatementBoundary"],
-        metadata: { type: "declaration" }
+        metadata: { type: "declaration" },
       };
 
       context.pushParsingContext(parsingContext);
@@ -47,7 +56,7 @@ describe("ParserContext Extensions", () => {
         name: "parameter-list",
         expectedElements: ["parameter", "comma"],
         recoveryStrategies: ["DelimiterRecovery"],
-        metadata: { nested: true }
+        metadata: { nested: true },
       };
 
       context.pushParsingContext(nestedContext);
@@ -78,7 +87,7 @@ describe("ParserContext Extensions", () => {
       const tokens: Token[] = [
         createToken("Identifier", "test1"),
         createToken("Identifier", "test2"),
-        createToken("Identifier", "test3")
+        createToken("Identifier", "test3"),
       ];
       const context = new ParserContext("test.ts", tokens, diagnostics);
 
@@ -90,7 +99,11 @@ describe("ParserContext Extensions", () => {
 
       // Advance position and add diagnostic
       context.consume();
-      const error = ParseError.error(DiagnosticCode.UNEXPECTED_TOKEN, "test error", tokens[0].span);
+      const error = ParseError.error(
+        DiagnosticCode.UNEXPECTED_TOKEN,
+        "test error",
+        tokens[0].span,
+      );
       context.addFailure(error);
 
       // Mark another recovery point
@@ -121,13 +134,14 @@ describe("ParserContext Extensions", () => {
         createToken("Identifier", "test1"),
         createToken("Identifier", "test2"),
         createToken("Identifier", "semicolon"), // Pretend this is a semicolon
-        createToken("Identifier", "test3")
+        createToken("Identifier", "test3"),
       ];
       const context = new ParserContext("test.ts", tokens, diagnostics);
 
       // Test synchronization to semicolon-like token
       const syncPredicate = (token: Token) => {
-        return token.kind === "Identifier" && (token as any).text === "semicolon";
+        return token.kind === "Identifier" &&
+          (token as any).text === "semicolon";
       };
 
       context.skipToSynchronizationPoint(syncPredicate);
@@ -139,7 +153,7 @@ describe("ParserContext Extensions", () => {
       const tokens: Token[] = [
         createToken("Identifier", "test1"),
         createToken("Identifier", "test2"),
-        createToken("Identifier", "test3")
+        createToken("Identifier", "test3"),
       ];
       const context = new ParserContext("test.ts", tokens, diagnostics);
 
@@ -157,7 +171,7 @@ describe("ParserContext Extensions", () => {
 
       const span = new Span(
         new SpanLocation(1, 1, 0),
-        new SpanLocation(1, 2, 1)
+        new SpanLocation(1, 2, 1),
       );
 
       // Test virtual token insertion
@@ -186,7 +200,7 @@ describe("ParserContext Extensions", () => {
       const error = ParseError.error(
         DiagnosticCode.UNEXPECTED_TOKEN,
         "Test recovery error",
-        tokens[0].span
+        tokens[0].span,
       );
 
       // Test adding recovery error
@@ -219,18 +233,18 @@ describe("ParserContext Extensions", () => {
           name: "test-context",
           expectedElements: ["identifier"],
           recoveryStrategies: ["sync"],
-          metadata: {}
+          metadata: {},
         }],
         position: 0,
         nearbyTokens: tokens,
-        metadata: { test: true }
+        metadata: { test: true },
       };
 
       const recoveryAttempts = [{
         strategy: "TestRecovery",
         success: false,
         tokensSkipped: 2,
-        message: "Recovery failed"
+        message: "Recovery failed",
       }];
 
       const enhancedError = new ParseError(
@@ -244,7 +258,7 @@ describe("ParserContext Extensions", () => {
         ["identifier", "keyword"], // expected tokens
         tokens[0], // actual token
         ["parser1", "parser2"], // parser stack
-        recoveryAttempts
+        recoveryAttempts,
       );
 
       // Test that addFailure transfers enhanced information
@@ -267,14 +281,14 @@ describe("ParserContext Extensions", () => {
       const error = ParseError.error(
         DiagnosticCode.UNEXPECTED_TOKEN,
         "Expected semicolon after variable declaration",
-        tokens[0].span
+        tokens[0].span,
       );
 
       context.addFailure(error);
 
       const source = "let myVar = 42";
       const formatted = formatDiagnostics(diagnostics.getAll(), source);
-      
+
       expect(formatted).toMatchSnapshot();
     });
 
@@ -285,14 +299,14 @@ describe("ParserContext Extensions", () => {
 
       const span = new Span(
         new SpanLocation(1, 10, 10),
-        new SpanLocation(1, 10, 10)
+        new SpanLocation(1, 10, 10),
       );
 
       context.insertVirtualToken("CloseParen", span);
 
       const source = "function() { return 42; }";
       const formatted = formatDiagnostics(diagnostics.getAll(), source);
-      
+
       expect(formatted).toMatchSnapshot();
     });
 
@@ -301,7 +315,7 @@ describe("ParserContext Extensions", () => {
       const tokens: Token[] = [
         createToken("Identifier", "function", 1, 0),
         createToken("Identifier", "myFunc", 1, 9),
-        createToken("Identifier", "param", 1, 16)
+        createToken("Identifier", "param", 1, 16),
       ];
       const context = new ParserContext("example.ts", tokens, diagnostics);
 
@@ -311,14 +325,14 @@ describe("ParserContext Extensions", () => {
           name: "function-declaration",
           expectedElements: ["identifier", "parameter-list", "function-body"],
           recoveryStrategies: ["StatementBoundary", "DelimiterRecovery"],
-          metadata: { functionName: "myFunc" }
+          metadata: { functionName: "myFunc" },
         }],
         position: 2,
         nearbyTokens: tokens,
-        metadata: { 
+        metadata: {
           parsingPhase: "parameter-list",
-          expectedDelimiter: ")"
-        }
+          expectedDelimiter: ")",
+        },
       };
 
       const recoveryAttempts = [
@@ -326,14 +340,14 @@ describe("ParserContext Extensions", () => {
           strategy: "DelimiterRecovery",
           success: false,
           tokensSkipped: 1,
-          message: "Attempted to find closing parenthesis"
+          message: "Attempted to find closing parenthesis",
         },
         {
           strategy: "StatementBoundary",
           success: true,
           tokensSkipped: 0,
-          message: "Synchronized at statement boundary"
-        }
+          message: "Synchronized at statement boundary",
+        },
       ];
 
       const enhancedError = new ParseError(
@@ -342,7 +356,7 @@ describe("ParserContext Extensions", () => {
         "Missing closing parenthesis in function parameter list",
         new Span(
           new SpanLocation(1, 16, 16),
-          new SpanLocation(1, 21, 21)
+          new SpanLocation(1, 21, 21),
         ),
         [
           {
@@ -350,33 +364,33 @@ describe("ParserContext Extensions", () => {
             message: "Insert closing parenthesis",
             span: new Span(
               new SpanLocation(1, 21, 21),
-              new SpanLocation(1, 21, 21)
+              new SpanLocation(1, 21, 21),
             ),
-            replacement: ")"
-          }
+            replacement: ")",
+          },
         ],
         [
           {
             message: "Function declaration started here",
             span: new Span(
               new SpanLocation(1, 0, 0),
-              new SpanLocation(1, 8, 8)
+              new SpanLocation(1, 8, 8),
             ),
-            fileName: "example.ts"
-          }
+            fileName: "example.ts",
+          },
         ],
         errorContext,
         [")", "comma", "parameter"], // expected tokens
         tokens[2], // actual token
         ["parseFunction", "parseParameterList", "parseParameter"], // parser stack
-        recoveryAttempts
+        recoveryAttempts,
       );
 
       context.addFailure(enhancedError);
 
       const source = "function myFunc(param { return 42; }";
       const formatted = formatDiagnostics(diagnostics.getAll(), source);
-      
+
       expect(formatted).toMatchSnapshot();
     });
 
@@ -385,7 +399,7 @@ describe("ParserContext Extensions", () => {
       const tokens: Token[] = [
         createToken("Identifier", "if", 1, 0),
         createToken("Identifier", "condition", 1, 3),
-        createToken("Identifier", "statement", 2, 2)
+        createToken("Identifier", "statement", 2, 2),
       ];
       const context = new ParserContext("example.ts", tokens, diagnostics);
 
@@ -393,36 +407,36 @@ describe("ParserContext Extensions", () => {
       const error1 = ParseError.error(
         DiagnosticCode.EXPECTED_TOKEN,
         "Expected opening parenthesis after 'if'",
-        new Span(new SpanLocation(1, 2, 2), new SpanLocation(1, 3, 3))
+        new Span(new SpanLocation(1, 2, 2), new SpanLocation(1, 3, 3)),
       );
       context.addRecoveryError(error1, "DelimiterRecovery");
 
       const error2 = ParseError.warning(
         DiagnosticCode.INSERTED_TOKEN,
         "Inserted missing opening parenthesis",
-        new Span(new SpanLocation(1, 3, 3), new SpanLocation(1, 3, 3))
+        new Span(new SpanLocation(1, 3, 3), new SpanLocation(1, 3, 3)),
       );
       context.addRecoveryError(error2, "VirtualTokenInsertion");
 
       const error3 = ParseError.error(
         DiagnosticCode.EXPECTED_TOKEN,
         "Expected closing parenthesis after condition",
-        new Span(new SpanLocation(1, 12, 12), new SpanLocation(1, 12, 12))
+        new Span(new SpanLocation(1, 12, 12), new SpanLocation(1, 12, 12)),
       );
       context.addRecoveryError(error3, "DelimiterRecovery");
 
       const source = "if condition\n  statement;";
       const formatted = formatDiagnostics(diagnostics.getAll(), source);
-      
+
       expect(formatted).toMatchSnapshot();
 
       // Also test recovery history
       const history = context.getRecoveryHistory();
       expect(history).toHaveLength(3);
-      expect(history.map(h => h.strategy)).toEqual([
+      expect(history.map((h) => h.strategy)).toEqual([
         "DelimiterRecovery",
-        "VirtualTokenInsertion", 
-        "DelimiterRecovery"
+        "VirtualTokenInsertion",
+        "DelimiterRecovery",
       ]);
     });
 
@@ -434,7 +448,7 @@ describe("ParserContext Extensions", () => {
         createToken("Identifier", "syntax", 1, 16),
         createToken("Identifier", "here", 1, 23),
         createToken("Identifier", "function", 2, 0),
-        createToken("Identifier", "valid", 2, 9)
+        createToken("Identifier", "valid", 2, 9),
       ];
       const context = new ParserContext("example.ts", tokens, diagnostics);
 
@@ -442,30 +456,32 @@ describe("ParserContext Extensions", () => {
       const parseError = ParseError.error(
         DiagnosticCode.INVALID_SYNTAX,
         "Invalid function declaration syntax",
-        new Span(new SpanLocation(1, 16, 16), new SpanLocation(1, 28, 28))
+        new Span(new SpanLocation(1, 16, 16), new SpanLocation(1, 28, 28)),
       );
       context.addRecoveryError(parseError, "SyntaxError");
 
       // Simulate skipping to synchronization point
       const syncPredicate = (token: Token) => {
-        return token.kind === "Identifier" && (token as any).text === "function";
+        return token.kind === "Identifier" &&
+          (token as any).text === "function";
       };
-      
+
       // Skip to the next function declaration
       context.setPosition(1); // Start after first function token
       context.skipToSynchronizationPoint(syncPredicate);
-      
+
       // Add recovery success message
       const recoveryInfo = ParseError.info(
         DiagnosticCode.RECOVERED_AT,
         "Recovered parsing at next function declaration",
-        new Span(new SpanLocation(2, 0, 0), new SpanLocation(2, 8, 8))
+        new Span(new SpanLocation(2, 0, 0), new SpanLocation(2, 8, 8)),
       );
       context.addRecoveryError(recoveryInfo, "StatementBoundary");
 
-      const source = "function broken syntax here\nfunction valid() { return 42; }";
+      const source =
+        "function broken syntax here\nfunction valid() { return 42; }";
       const formatted = formatDiagnostics(diagnostics.getAll(), source);
-      
+
       expect(formatted).toMatchSnapshot();
     });
   });

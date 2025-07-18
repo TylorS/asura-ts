@@ -1,232 +1,321 @@
 import { describe, expect, it } from "vitest";
-import { 
-  ParseError, 
-  ParseFailure, 
-  RecoveredNode, 
-  PartialNode,
-  ErrorContext,
-  ParsingContext,
-  RecoveryAttempt,
-  ParserContext
-} from "./Parser.ts";
-import { DiagnosticCode, DiagnosticSeverity, DiagnosticCollection } from "../diagnostics/mod.ts";
+import { DiagnosticCode, DiagnosticCollection } from "../diagnostics/mod.ts";
 import { Span, SpanLocation } from "../tokens/Span.ts";
-import { Identifier } from "../tokens/Token.ts";
+import { Identifier, Newline, Symbol, Token } from "../tokens/Token.ts";
+import { ParseError, ParseFailure, ParserContext } from "./Parser.ts";
+import {
+  DelimiterRecovery,
+  ExpressionRecovery,
+  KeywordRecovery,
+  RecoveryStrategy,
+  StatementBoundaryRecovery,
+} from "./ErrorRecovery.ts";
 
-describe("Error Recovery Infrastructure", () => {
-  const testSpan = new Span(
-    new SpanLocation(1, 1, 0),
-    new SpanLocation(1, 5, 4)
+// Helper function to create a test span
+function createSpan(line: number = 1, col: number = 1): Span {
+  const location = new SpanLocation(line, col, 0);
+  return new Span(location, location);
+}
+
+// Helper function to create test tokens
+function createTokens(): Token[] {
+  return [
+    new Identifier("test", createSpan(1, 1)),
+    new Symbol("OpenParen", "(", createSpan(1, 5)),
+    new Identifier("param", createSpan(1, 6)),
+    new Symbol("Comma", ",", createSpan(1, 11)),
+    new Identifier("param2", createSpan(1, 13)),
+    // Missing CloseParen here
+    new Symbol("OpenBrace", "{", createSpan(1, 20)),
+    new Identifier("body", createSpan(1, 22)),
+    new Symbol("CloseBrace", "}", createSpan(1, 27)),
+    new Newline(createSpan(1, 28)),
+    new Identifier("nextStatement", createSpan(2, 1)),
+  ];
+}
+
+// Helper function to create test context
+function createTestContext(tokens: Token[] = createTokens()): ParserContext {
+  return new ParserContext("test.ts", tokens, new DiagnosticCollection());
+}
+
+// Helper function to create test failure
+function createTestFailure(
+  code: DiagnosticCode = DiagnosticCode.UNEXPECTED_TOKEN,
+): ParseFailure {
+  const error = ParseError.error(
+    code,
+    "Test error",
+    createSpan(),
   );
+  return new ParseFailure([error]);
+}
 
-  describe("Enhanced ParseError", () => {
-    it("should create ParseError with enhanced context information", () => {
-      const context: ErrorContext = {
-        parsingContexts: [{
-          name: "function-declaration",
-          expectedElements: ["identifier", "parameters"],
-          recoveryStrategies: ["skip-to-semicolon"],
-          metadata: { depth: 1 }
-        }],
-        position: 10,
-        nearbyTokens: [],
-        metadata: { phase: "parsing" }
-      };
+describe("StatementBoundaryRecovery", () => {
+  const strategy = new StatementBoundaryRecovery();
 
-      const expectedTokens = ["identifier", "fun"];
-      const recoveryAttempts: RecoveryAttempt[] = [{
-        strategy: "skip-to-semicolon",
-        success: false,
-        tokensSkipped: 3,
-        message: "Attempted to skip to semicolon"
-      }];
+  it("should identify when recovery is possible", () => {
+    const context = createTestContext();
+    const failure = createTestFailure();
 
-      const error = ParseError.errorWithContext(
-        DiagnosticCode.UNEXPECTED_TOKEN,
-        "Expected identifier",
-        testSpan,
-        context,
-        expectedTokens,
-        null,
-        [],
-        []
-      );
-
-      expect(error.severity).toBe(DiagnosticSeverity.ERROR);
-      expect(error.code).toBe(DiagnosticCode.UNEXPECTED_TOKEN);
-      expect(error.message).toBe("Expected identifier");
-      expect(error.parsingContext).toBe(context);
-      expect(error.expectedTokens).toEqual(expectedTokens);
-      expect(error.actualToken).toBe(null);
-    });
-
-    it("should preserve enhanced information when adding fixes", () => {
-      const context: ErrorContext = {
-        parsingContexts: [],
-        position: 5,
-        nearbyTokens: [],
-        metadata: {}
-      };
-
-      const error = ParseError.errorWithContext(
-        DiagnosticCode.MISSING_SEMICOLON,
-        "Missing semicolon",
-        testSpan,
-        context,
-        [";"]
-      );
-
-      const errorWithFix = error.addFix({
-        kind: "insert",
-        message: "Insert semicolon",
-        span: testSpan,
-        replacement: ";"
-      });
-
-      expect(errorWithFix.parsingContext).toBe(context);
-      expect(errorWithFix.expectedTokens).toEqual([";"]);
-      expect(errorWithFix.fixes).toHaveLength(1);
-    });
+    expect(strategy.canRecover(context, failure)).toBe(true);
   });
 
-  describe("Enhanced ParseFailure", () => {
-    it("should support partial results", () => {
-      const partialResult = { name: "incomplete" };
-      const error = ParseError.error(
-        DiagnosticCode.PREMATURE_EOF,
-        "Unexpected end of file",
-        testSpan
-      );
+  it("should skip tokens to newline boundary", () => {
+    const context = createTestContext();
+    const failure = createTestFailure();
 
-      const failure = new ParseFailure([error], partialResult);
+    // Position at start of tokens
+    const result = strategy.recover(context, failure);
 
-      expect(failure.type).toBe("failure");
-      expect(failure.errors).toHaveLength(1);
-      expect(failure.partialResult).toBe(partialResult);
-    });
-
-    it("should work without partial results", () => {
-      const error = ParseError.error(
-        DiagnosticCode.UNEXPECTED_TOKEN,
-        "Unexpected token",
-        testSpan
-      );
-
-      const failure = new ParseFailure([error]);
-
-      expect(failure.type).toBe("failure");
-      expect(failure.errors).toHaveLength(1);
-      expect(failure.partialResult).toBeUndefined();
-    });
+    expect(result.success).toBe(true);
+    expect(result.tokensSkipped > 0).toBe(true);
+    expect(result.virtualTokensInserted.length).toBe(0);
+    expect(result.message).toBeDefined();
   });
 
-  describe("RecoveredNode", () => {
-    it("should create RecoveredNode with recovery information", () => {
-      const value = new Identifier("test", testSpan);
-      const recoveryErrors = [
-        ParseError.error(DiagnosticCode.SKIPPED_TOKENS, "Skipped tokens", testSpan)
-      ];
+  it("should skip tokens to semicolon boundary", () => {
+    const tokens = [
+      new Identifier("test", createSpan()),
+      new Identifier("invalid", createSpan()),
+      new Symbol("Semicolon", ";", createSpan()),
+      new Identifier("next", createSpan()),
+    ];
+    const context = createTestContext(tokens);
+    const failure = createTestFailure();
 
-      const recoveredNode = new RecoveredNode(value, recoveryErrors, testSpan);
+    const result = strategy.recover(context, failure);
 
-      expect(recoveredNode.value).toBe(value);
-      expect(recoveredNode.recoveryErrors).toBe(recoveryErrors);
-      expect(recoveredNode.span).toBe(testSpan);
-    });
+    expect(result.success).toBe(true);
+    expect(result.tokensSkipped).toBe(2); // "test" and "invalid"
   });
 
-  describe("PartialNode", () => {
-    it("should create PartialNode with partial completion information", () => {
-      const completedFields = { name: "test" };
-      const missingFields = ["parameters", "body"];
-      const errors = [
-        ParseError.error(DiagnosticCode.INCOMPLETE_FUNCTION, "Incomplete function", testSpan)
-      ];
+  it("should skip tokens to brace boundary", () => {
+    const tokens = [
+      new Identifier("test", createSpan()),
+      new Identifier("invalid", createSpan()),
+      new Symbol("OpenBrace", "{", createSpan()),
+      new Identifier("next", createSpan()),
+    ];
+    const context = createTestContext(tokens);
+    const failure = createTestFailure();
 
-      const partialNode = new PartialNode(
-        "FunctionDeclaration",
-        completedFields,
-        missingFields,
-        errors,
-        testSpan
-      );
+    const result = strategy.recover(context, failure);
 
-      expect(partialNode.nodeType).toBe("FunctionDeclaration");
-      expect(partialNode.completedFields).toBe(completedFields);
-      expect(partialNode.missingFields).toEqual(missingFields);
-      expect(partialNode.errors).toBe(errors);
-      expect(partialNode.span).toBe(testSpan);
-    });
+    expect(result.success).toBe(true);
+    expect(result.tokensSkipped).toBe(2); // "test" and "invalid"
+  });
+
+  it("should handle end of input gracefully", () => {
+    const tokens: Token[] = [];
+    const context = createTestContext(tokens);
+    const failure = createTestFailure();
+
+    expect(strategy.canRecover(context, failure)).toBe(false);
   });
 });
 
-describe("Enhanced Diagnostic Integration", () => {
-  const testSpan = new Span(
-    new SpanLocation(1, 1, 0),
-    new SpanLocation(1, 5, 4)
-  );
+describe("DelimiterRecovery", () => {
+  const strategy = new DelimiterRecovery();
 
-  it("should transfer enhanced information from ParseError to Diagnostic", () => {
-    const diagnostics = new DiagnosticCollection();
-    const context = new ParserContext("test.ts", [], diagnostics);
-
-    const errorContext: ErrorContext = {
-      parsingContexts: [{
-        name: "expression",
-        expectedElements: ["identifier"],
-        recoveryStrategies: ["skip-to-operator"],
-        metadata: {}
-      }],
-      position: 15,
-      nearbyTokens: [],
-      metadata: { phase: "expression-parsing" }
-    };
-
-    const parseError = ParseError.errorWithContext(
-      DiagnosticCode.UNEXPECTED_TOKEN,
-      "Expected identifier",
-      testSpan,
-      errorContext,
-      ["identifier", "number"],
-      null
+  it("should identify delimiter-related failures", () => {
+    const error = ParseError.error(
+      DiagnosticCode.UNCLOSED_DELIMITER,
+      "Unclosed parenthesis",
+      createSpan(),
     );
+    const failure = new ParseFailure([error]);
+    const context = createTestContext();
 
-    const diagnostic = context.addFailure(parseError);
-
-    expect(diagnostic.severity).toBe(DiagnosticSeverity.ERROR);
-    expect(diagnostic.code).toBe(DiagnosticCode.UNEXPECTED_TOKEN);
-    expect(diagnostic.message).toBe("Expected identifier");
-    expect(diagnostic.fileName).toBe("test.ts");
-    expect(diagnostic.parsingContext).toBe(errorContext);
-    expect(diagnostic.expectedTokens).toEqual(["identifier", "number"]);
-    expect(diagnostic.actualToken).toBe(null);
+    expect(strategy.canRecover(context, failure)).toBe(true);
   });
 
-  it("should preserve enhanced information when creating diagnostic fixes", () => {
-    const diagnostics = new DiagnosticCollection();
-    const context = new ParserContext("test.ts", [], diagnostics);
-
-    const errorContext: ErrorContext = {
-      parsingContexts: [],
-      position: 20,
-      nearbyTokens: [],
-      metadata: {}
-    };
-
-    const parseError = ParseError.errorWithContext(
-      DiagnosticCode.MISSING_SEMICOLON,
-      "Missing semicolon",
-      testSpan,
-      errorContext,
-      [";"]
+  it("should identify failures with delimiter keywords in message", () => {
+    const error = ParseError.error(
+      DiagnosticCode.UNEXPECTED_TOKEN,
+      "Expected closing brace",
+      createSpan(),
     );
+    const failure = new ParseFailure([error]);
+    const context = createTestContext();
 
-    const diagnostic = context.addFailure(parseError);
-    const diagnosticWithFix = diagnostic.withFix("Insert semicolon", ";");
+    expect(strategy.canRecover(context, failure)).toBe(true);
+  });
 
-    expect(diagnosticWithFix.parsingContext).toBe(errorContext);
-    expect(diagnosticWithFix.expectedTokens).toEqual([";"]);
-    expect(diagnosticWithFix.fixes).toHaveLength(1);
-    expect(diagnosticWithFix.fixes[0].message).toBe("Insert semicolon");
+  it("should suggest missing delimiter insertion", () => {
+    const tokens = [
+      new Identifier("func", createSpan()),
+      new Symbol("OpenParen", "(", createSpan()),
+      new Identifier("param", createSpan()),
+      // Missing CloseParen
+      new Symbol("OpenBrace", "{", createSpan()),
+    ];
+    const context = createTestContext(tokens);
+    const failure = createTestFailure(DiagnosticCode.UNCLOSED_DELIMITER);
+
+    // Position after the opening paren
+    context.setPosition(2);
+
+    const result = strategy.recover(context, failure);
+
+    expect(result.success).toBe(true);
+    expect(result.message).toBeDefined();
+  });
+
+  it("should skip to next delimiter when no match found", () => {
+    const tokens = [
+      new Identifier("broken", createSpan()),
+      new Identifier("syntax", createSpan()),
+      new Symbol("Comma", ",", createSpan()),
+      new Identifier("next", createSpan()),
+    ];
+    const context = createTestContext(tokens);
+    const failure = createTestFailure(DiagnosticCode.UNCLOSED_DELIMITER);
+
+    const result = strategy.recover(context, failure);
+
+    expect(result.success).toBe(true);
+    expect(result.tokensSkipped).toBe(2); // "broken" and "syntax"
+  });
+});
+
+describe("ExpressionRecovery", () => {
+  const strategy = new ExpressionRecovery();
+
+  it("should identify expression context failures", () => {
+    const context = createTestContext();
+    context.pushParsingContext({
+      name: "binary-expression",
+      expectedElements: ["operator"],
+      recoveryStrategies: [],
+      metadata: {},
+    });
+
+    const failure = createTestFailure();
+
+    expect(strategy.canRecover(context, failure)).toBe(true);
+  });
+
+  it("should identify expression-related error messages", () => {
+    const error = ParseError.error(
+      DiagnosticCode.UNEXPECTED_TOKEN,
+      "Expected operator in expression",
+      createSpan(),
+    );
+    const failure = new ParseFailure([error]);
+    const context = createTestContext();
+
+    expect(strategy.canRecover(context, failure)).toBe(true);
+  });
+
+  it("should skip to operator boundary", () => {
+    const tokens = [
+      new Identifier("broken", createSpan()),
+      new Identifier("expr", createSpan()),
+      new Symbol("Plus", "+", createSpan()),
+      new Identifier("next", createSpan()),
+    ];
+    const context = createTestContext(tokens);
+    const failure = createTestFailure();
+
+    const result = strategy.recover(context, failure);
+
+    expect(result.success).toBe(true);
+    expect(result.tokensSkipped).toBe(2); // "broken" and "expr"
+  });
+
+  it("should skip to comma boundary", () => {
+    const tokens = [
+      new Identifier("broken", createSpan()),
+      new Identifier("expr", createSpan()),
+      new Symbol("Comma", ",", createSpan()),
+      new Identifier("next", createSpan()),
+    ];
+    const context = createTestContext(tokens);
+    const failure = createTestFailure();
+
+    const result = strategy.recover(context, failure);
+
+    expect(result.success).toBe(true);
+    expect(result.tokensSkipped).toBe(2); // "broken" and "expr"
+  });
+});
+
+describe("KeywordRecovery", () => {
+  const strategy = new KeywordRecovery();
+
+  it("should identify keyword-related failures", () => {
+    const error = ParseError.error(
+      DiagnosticCode.UNEXPECTED_TOKEN,
+      "Unexpected keyword",
+      createSpan(),
+    );
+    const failure = new ParseFailure([error]);
+    const context = createTestContext();
+
+    expect(strategy.canRecover(context, failure)).toBe(true);
+  });
+
+  it("should provide suggestions for misplaced keywords", () => {
+    const context = createTestContext();
+    context.pushParsingContext({
+      name: "expression-context",
+      expectedElements: [],
+      recoveryStrategies: [],
+      metadata: {},
+    });
+
+    const failure = createTestFailure();
+
+    const result = strategy.recover(context, failure);
+
+    expect(result.success).toBe(true);
+    expect(result.message).toBeDefined();
+  });
+
+  it("should skip to safe recovery point", () => {
+    const tokens = [
+      new Identifier("broken", createSpan()),
+      new Identifier("syntax", createSpan()),
+      new Symbol("Semicolon", ";", createSpan()),
+      new Identifier("next", createSpan()),
+    ];
+    const context = createTestContext(tokens);
+    const failure = createTestFailure();
+
+    const result = strategy.recover(context, failure);
+
+    expect(result.success).toBe(true);
+    expect(result.tokensSkipped).toBe(2); // "broken" and "syntax"
+  });
+});
+
+describe("Recovery Strategy Interface", () => {
+  it("should have consistent interface across all strategies", () => {
+    const strategies: RecoveryStrategy[] = [
+      new StatementBoundaryRecovery(),
+      new DelimiterRecovery(),
+      new ExpressionRecovery(),
+      new KeywordRecovery(),
+    ];
+
+    for (const strategy of strategies) {
+      expect(strategy.name).toBeDefined();
+      expect(typeof strategy.canRecover).toBe("function");
+      expect(typeof strategy.recover).toBe("function");
+    }
+  });
+
+  it("should return consistent RecoveryResult structure", () => {
+    const context = createTestContext();
+    const failure = createTestFailure();
+    const strategy = new StatementBoundaryRecovery();
+
+    const result = strategy.recover(context, failure);
+
+    expect(typeof result.success).toBe("boolean");
+    expect(typeof result.tokensSkipped).toBe("number");
+    expect(Array.isArray(result.virtualTokensInserted)).toBe(true);
+    expect(typeof result.message).toBe("string");
   });
 });

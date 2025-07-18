@@ -66,7 +66,8 @@ export class Diagnostic {
     readonly span: Span,
     readonly fileName: string,
     readonly fixes: ReadonlyArray<DiagnosticFix> = [],
-    readonly relatedInformation: ReadonlyArray<DiagnosticRelatedInformation> = [],
+    readonly relatedInformation: ReadonlyArray<DiagnosticRelatedInformation> =
+      [],
     // Enhanced error recovery information (optional)
     readonly parsingContext?: ErrorContext,
     readonly expectedTokens?: string[],

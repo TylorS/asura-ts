@@ -759,6 +759,210 @@ export function separatedBy<U>(
   };
 }
 
+/**
+ * Delimiter recovery combinator for handling missing delimiters
+ *
+ * Implements recoverableDelimited combinator for open/content/close patterns.
+ * Handles cases where opening delimiter is present but closing is missing,
+ * and cases where both delimiters are missing. Returns structured result
+ * with nullable before/content/after fields.
+ *
+ * @param open - Parser for opening delimiter
+ * @param content - Parser for content between delimiters
+ * @param close - Parser for closing delimiter
+ * @param insertMissing - Whether to insert virtual tokens for missing delimiters
+ * @returns Parser that returns structured result with nullable fields
+ */
+export function recoverableDelimited<T, U, V>(
+  open: Parser<U>,
+  content: Parser<T>,
+  close: Parser<V>,
+  insertMissing: boolean = true,
+): Parser<{ before: U | null; content: T | null; after: V | null }> {
+  return {
+    parse(context: ParserContext): ParseResult<{
+      before: U | null;
+      content: T | null;
+      after: V | null;
+    }> {
+      const allErrors: ParseError[] = [];
+      let before: U | null = null;
+      let contentValue: T | null = null;
+      let after: V | null = null;
+      let hasAnySuccess = false;
+
+      // Skip initial whitespace
+      skipWhitespace(context);
+
+      // Try to parse opening delimiter
+      const openStartPosition = context.getPosition();
+      const openResult = open.parse(context);
+
+      if (openResult.type === "success") {
+        before = openResult.value;
+        hasAnySuccess = true;
+        skipWhitespace(context);
+      } else {
+        // Opening delimiter failed
+        allErrors.push(...openResult.errors);
+        context.setPosition(openStartPosition);
+
+        if (insertMissing) {
+          // Insert virtual opening delimiter
+          const virtualOpenError = ParseError.warning(
+            DiagnosticCode.INSERTED_TOKEN,
+            "Inserted missing opening delimiter",
+            context.span(),
+            [{
+              kind: "insert",
+              message: "Insert opening delimiter",
+              span: context.span(),
+              replacement: "(", // Generic placeholder - could be made configurable
+            }],
+          );
+          context.addRecoveryError(virtualOpenError, "DelimiterRecovery");
+        }
+
+        // Continue parsing content even without opening delimiter
+        skipWhitespace(context);
+      }
+
+      // Try to parse content
+      const contentStartPosition = context.getPosition();
+      const contentResult = content.parse(context);
+
+      if (contentResult.type === "success") {
+        contentValue = contentResult.value;
+        hasAnySuccess = true;
+        skipWhitespace(context);
+      } else {
+        // Content parsing failed
+        allErrors.push(...contentResult.errors);
+        context.setPosition(contentStartPosition);
+
+        // Add recovery information for failed content
+        const contentRecoveryError = ParseError.info(
+          DiagnosticCode.RECOVERED_ERROR,
+          "Content parsing failed in delimited expression, continuing with closing delimiter",
+          context.span(),
+        );
+        context.addRecoveryError(contentRecoveryError, "DelimiterRecovery");
+
+        // Skip problematic tokens to try to find closing delimiter
+        // We need to be more intelligent about this - look ahead for the closing delimiter
+        let tokensSkippedForContent = 0;
+        while (!context.isAtEnd()) {
+          // Try to parse the closing delimiter at current position
+          const closeTestPosition = context.getPosition();
+          const closeTestResult = close.parse(context);
+
+          if (closeTestResult.type === "success") {
+            // Found the closing delimiter, reset position to try it in the main close parsing
+            context.setPosition(closeTestPosition);
+            break;
+          }
+
+          // Closing delimiter not found here, skip this token and continue
+          context.consume();
+          tokensSkippedForContent++;
+
+          // Prevent infinite loops by limiting how far we look
+          if (tokensSkippedForContent > 10) {
+            break;
+          }
+        }
+
+        skipWhitespace(context);
+      }
+
+      // Try to parse closing delimiter
+      const closeStartPosition = context.getPosition();
+      const closeResult = close.parse(context);
+
+      if (closeResult.type === "success") {
+        after = closeResult.value;
+        hasAnySuccess = true;
+        skipWhitespace(context);
+      } else {
+        // Closing delimiter failed
+        allErrors.push(...closeResult.errors);
+        context.setPosition(closeStartPosition);
+
+        if (insertMissing) {
+          // Insert virtual closing delimiter
+          const virtualCloseError = ParseError.warning(
+            DiagnosticCode.INSERTED_TOKEN,
+            "Inserted missing closing delimiter",
+            context.span(),
+            [{
+              kind: "insert",
+              message: "Insert closing delimiter",
+              span: context.span(),
+              replacement: ")", // Generic placeholder - could be made configurable
+            }],
+          );
+          context.addRecoveryError(virtualCloseError, "DelimiterRecovery");
+        }
+
+        // Try to synchronize to a reasonable recovery point
+        // Look for common delimiters or statement boundaries
+        const syncPredicate: SyncPredicate = (token: Token) => {
+          return token.kind === "Newline" ||
+            (token.kind === "Symbol" && (
+              token.symbol === "Semicolon" ||
+              token.symbol === "Comma" ||
+              token.symbol === "CloseParen" ||
+              token.symbol === "CloseBrace" ||
+              token.symbol === "CloseBracket"
+            ));
+        };
+
+        // Skip tokens until we find a synchronization point
+        let tokensSkipped = 0;
+        while (!context.isAtEnd()) {
+          const token = context.peek();
+          if (syncPredicate(token, context)) {
+            break;
+          }
+          context.consume();
+          tokensSkipped++;
+        }
+
+        if (tokensSkipped > 0) {
+          const syncError = ParseError.info(
+            DiagnosticCode.RECOVERED_AT,
+            `Skipped ${tokensSkipped} tokens to find delimiter recovery point`,
+            context.span(),
+          );
+          context.addRecoveryError(syncError, "DelimiterRecovery");
+        }
+      }
+
+      // Skip final whitespace
+      skipWhitespace(context);
+
+      // Determine success based on whether we parsed anything useful
+      if (hasAnySuccess) {
+        return new ParseSuccess({
+          before,
+          content: contentValue,
+          after,
+        });
+      } else {
+        // Complete failure - couldn't parse any part
+        const completeFailureError = ParseError.error(
+          DiagnosticCode.UNCLOSED_DELIMITER,
+          "Failed to parse delimited expression: no opening delimiter, content, or closing delimiter found",
+          context.span(),
+        );
+
+        return new ParseFailure([...allErrors, completeFailureError]);
+      }
+    },
+    pipe,
+  };
+}
+
 export function catchFailure<U>(
   f: (failure: ParseFailure<never>) => ParseResult<U>,
 ) {
@@ -1265,9 +1469,9 @@ export function recoverableSequence<Parsers extends ReadonlyArray<Parser.Any>>(
       for (let i = 0; i < parsers.length; i++) {
         const parser = parsers[i];
         const startPosition = context.getPosition();
-        
+
         const result = parser.parse(context);
-        
+
         if (result.type === "success") {
           results.push(result.value);
           hasAnySuccess = true;
@@ -1275,19 +1479,19 @@ export function recoverableSequence<Parsers extends ReadonlyArray<Parser.Any>>(
           // Parser failed, mark as null and collect errors
           results.push(null);
           allErrors.push(...result.errors);
-          
+
           // Reset position to where this parser started
           context.setPosition(startPosition);
-          
+
           // Add recovery information
           const recoveryError = ParseError.info(
             DiagnosticCode.RECOVERED_ERROR,
             `Element ${i} failed in recoverable sequence, continuing with remaining elements`,
             context.span(),
           );
-          
+
           context.addRecoveryError(recoveryError, "RecoverableSequence");
-          
+
           // Advance position by one token to allow next parser to try the next token
           // This is the key to recovery - we skip the problematic token
           if (!context.isAtEnd()) {
@@ -1309,7 +1513,7 @@ export function recoverableSequence<Parsers extends ReadonlyArray<Parser.Any>>(
           `All elements failed in recoverable sequence`,
           context.span(),
         );
-        
+
         return new ParseFailure([...allErrors, sequenceError]);
       }
     },
@@ -1345,9 +1549,9 @@ export function recoverableSeq<Parsers extends ReadonlyArray<Parser.Any>>(
       for (let i = 0; i < parsers.length; i++) {
         const parser = parsers[i];
         const startPosition = context.getPosition();
-        
+
         const result = parser.parse(context);
-        
+
         if (result.type === "success") {
           // Skip whitespace after successful parse, like seq does
           skipWhitespace(context);
@@ -1357,25 +1561,25 @@ export function recoverableSeq<Parsers extends ReadonlyArray<Parser.Any>>(
           // Parser failed, mark as null and collect errors
           results.push(null);
           allErrors.push(...result.errors);
-          
+
           // Reset position to where this parser started
           context.setPosition(startPosition);
-          
+
           // Add recovery information
           const recoveryError = ParseError.info(
             DiagnosticCode.RECOVERED_ERROR,
             `Element ${i} failed in recoverable sequence, continuing with remaining elements`,
             context.span(),
           );
-          
+
           context.addRecoveryError(recoveryError, "RecoverableSequence");
-          
+
           // Advance position by one token to allow next parser to try the next token
           // This is the key to recovery - we skip the problematic token
           if (!context.isAtEnd()) {
             context.consume();
           }
-          
+
           // Skip whitespace after consuming the problematic token
           skipWhitespace(context);
         }
@@ -1397,7 +1601,7 @@ export function recoverableSeq<Parsers extends ReadonlyArray<Parser.Any>>(
           `All elements failed in recoverable sequence`,
           context.span(),
         );
-        
+
         return new ParseFailure([...allErrors, sequenceError]);
       }
     },

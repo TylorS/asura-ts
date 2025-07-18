@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DiagnosticCollection, DiagnosticCode } from "../diagnostics/mod.ts";
+import { DiagnosticCode, DiagnosticCollection } from "../diagnostics/mod.ts";
 import { Span, SpanLocation } from "../tokens/Span.ts";
 import { Token } from "../tokens/Token.ts";
 import {
   ParseError,
   ParseFailure,
-  ParseSuccess,
   ParserContext,
+  ParseSuccess,
   recoverableSeq,
   recoverableSequence,
   token,
@@ -222,9 +222,9 @@ describe("recoverableSeq combinator (with whitespace handling)", () => {
       // Check that errors were recorded in diagnostics
       const diagnostics = context.diagnostics.getAll();
       expect(diagnostics.length).toBeGreaterThan(0);
-      
+
       // Should have recovery errors for failed elements
-      const recoveryErrors = diagnostics.filter(d => 
+      const recoveryErrors = diagnostics.filter((d) =>
         d.code === DiagnosticCode.RECOVERED_ERROR
       );
       expect(recoveryErrors.length).toBeGreaterThanOrEqual(2);
@@ -250,13 +250,13 @@ describe("recoverableSeq combinator (with whitespace handling)", () => {
       const result = parser.parse(context);
 
       expect(result.type).toBe("success");
-      
+
       // Check that position tracking is accurate in error messages
       const diagnostics = context.diagnostics.getAll();
-      const parseErrors = diagnostics.filter(d => 
+      const parseErrors = diagnostics.filter((d) =>
         d.code === DiagnosticCode.UNEXPECTED_TOKEN
       );
-      
+
       if (parseErrors.length > 0) {
         // The error should be at the position of the Whitespace token
         expect(parseErrors[0].span.start.column).toBe(6);
@@ -310,8 +310,8 @@ describe("recoverableSeq combinator (with whitespace handling)", () => {
 
       const recoveryHistory = context.getRecoveryHistory();
       expect(recoveryHistory.length).toBeGreaterThan(0);
-      
-      const recoverableSeqEvents = recoveryHistory.filter(event => 
+
+      const recoverableSeqEvents = recoveryHistory.filter((event) =>
         event.strategy === "RecoverableSequence"
       );
       expect(recoverableSeqEvents.length).toBe(1);
@@ -345,7 +345,7 @@ describe("recoverableSeq combinator (with whitespace handling)", () => {
       }
 
       const recoveryHistory = context.getRecoveryHistory();
-      const recoverableSeqEvents = recoveryHistory.filter(event => 
+      const recoverableSeqEvents = recoveryHistory.filter((event) =>
         event.strategy === "RecoverableSequence"
       );
       expect(recoverableSeqEvents.length).toBe(2); // Two failed elements
@@ -386,9 +386,9 @@ describe("recoverableSeq combinator (with whitespace handling)", () => {
       expect(result.type).toBe("failure");
       if (result.type === "failure") {
         expect(result.errors.length).toBeGreaterThan(0);
-        
+
         // Should have the final sequence error
-        const sequenceErrors = result.errors.filter(error => 
+        const sequenceErrors = result.errors.filter((error) =>
           error.message.includes("All elements failed in recoverable sequence")
         );
         expect(sequenceErrors.length).toBe(1);
@@ -526,7 +526,7 @@ describe("recoverableSeq combinator (with whitespace handling)", () => {
       if (result.type === "success") {
         // TypeScript should infer the correct tuple type
         const [first, second, third] = result.value;
-        
+
         expect(first?.kind).toBe("Identifier");
         expect(second).toBeNull();
         expect(third?.kind).toBe("Identifier");

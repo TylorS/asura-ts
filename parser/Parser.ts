@@ -14,6 +14,7 @@ import {
 } from "../tokens/Symbols.ts";
 import { Identifier, Symbol, Token } from "../tokens/Token.ts";
 import { pipe, Pipeable, pipeArguments } from "./Pipeable.ts";
+import type { RecoveryStrategy } from "./ErrorRecovery.ts";
 
 const EMPTY_SPAN = new Span(
   new SpanLocation(1, 1, 0),
@@ -1055,10 +1056,10 @@ export function keywordAsIdentifer(): Parser<Identifier> {
 
 /**
  * Synchronization combinator with predicate-based token skipping
- * 
- * Attempts to parse with the given parser, and if it fails, skips tokens 
+ *
+ * Attempts to parse with the given parser, and if it fails, skips tokens
  * until the sync predicate returns true, then returns null.
- * 
+ *
  * @param parser - The parser to attempt first
  * @param syncPredicate - Function that determines when to stop skipping tokens
  * @param errorMessage - Optional custom error message for synchronization failure
@@ -1074,27 +1075,27 @@ export function synchronize<T>(
       // First, try the main parser
       const startPosition = context.getPosition();
       const result = parser.parse(context);
-      
+
       if (result.type === "success") {
         return result;
       }
 
       // Parser failed, attempt synchronization
       context.setPosition(startPosition);
-      
+
       // Record the original failure
       const originalErrors = result.errors;
-      
+
       // Skip tokens until predicate returns true or we reach end of input
       let tokensSkipped = 0;
       while (!context.isAtEnd()) {
         const token = context.peek();
-        
+
         if (syncPredicate(token, context)) {
           // Found synchronization point
-          const syncMessage = errorMessage || 
+          const syncMessage = errorMessage ||
             `Synchronized after skipping ${tokensSkipped} tokens`;
-          
+
           // Add recovery information
           context.addRecoveryError(
             ParseError.info(
@@ -1104,26 +1105,126 @@ export function synchronize<T>(
             ),
             "SynchronizationRecovery",
           );
-          
+
           return new ParseSuccess(null);
         }
-        
+
         context.consume();
         tokensSkipped++;
       }
-      
+
       // Reached end of input without finding sync point
-      const syncFailureMessage = errorMessage || 
+      const syncFailureMessage = errorMessage ||
         `Failed to synchronize: reached end of input after skipping ${tokensSkipped} tokens`;
-      
+
       // Return failure with both original errors and sync failure
       const syncError = ParseError.error(
         DiagnosticCode.SYNC_FAILED,
         syncFailureMessage,
         context.span(),
       );
-      
+
       return new ParseFailure([...originalErrors, syncError]);
+    },
+    pipe,
+  };
+}
+
+/**
+ * Recovery combinator for strategy-based error recovery
+ *
+ * Tries the main parser first, and if it fails, applies a recovery strategy
+ * and then uses the recovery parser. Returns the appropriate result type
+ * based on which parser succeeded.
+ *
+ * @param parser - The main parser to attempt first
+ * @param recoveryParser - The parser to use after successful recovery
+ * @param strategy - The recovery strategy to apply when main parser fails
+ * @returns Parser that returns T on main parser success, U on recovery success
+ */
+export function recover<T, U>(
+  parser: Parser<T>,
+  recoveryParser: Parser<U>,
+  strategy: RecoveryStrategy,
+): Parser<T | U> {
+  return {
+    parse(context: ParserContext): ParseResult<T | U> {
+      // First, try the main parser
+      const startPosition = context.getPosition();
+      const result = parser.parse(context);
+
+      if (result.type === "success") {
+        return result;
+      }
+
+      // Main parser failed, check if recovery strategy can handle this failure
+      const failure = new ParseFailure(result.errors, result.partialResult);
+
+      if (!strategy.canRecover(context, failure)) {
+        // Strategy cannot recover from this failure, return original failure
+        return failure;
+      }
+
+      // Reset position to start of failed parse
+      context.setPosition(startPosition);
+
+      // Apply recovery strategy
+      const recoveryResult = strategy.recover(context, failure);
+
+      if (!recoveryResult.success) {
+        // Recovery strategy failed, return original failure with recovery info
+        const recoveryError = ParseError.error(
+          DiagnosticCode.RECOVERED_ERROR,
+          `Recovery strategy '${strategy.name}' failed: ${recoveryResult.message}`,
+          context.span(),
+        );
+
+        return new ParseFailure([...result.errors, recoveryError]);
+      }
+
+      // Recovery strategy succeeded, record the recovery
+      context.addRecoveryError(
+        ParseError.info(
+          DiagnosticCode.RECOVERED_ERROR,
+          `Applied recovery strategy '${strategy.name}': ${recoveryResult.message}`,
+          context.span(),
+        ),
+        strategy.name,
+      );
+
+      // Update recovery history with actual tokens skipped
+      const recoveryHistory = context.getRecoveryHistory();
+      if (recoveryHistory.length > 0) {
+        const lastEvent = recoveryHistory[recoveryHistory.length - 1];
+        lastEvent.tokensSkipped = recoveryResult.tokensSkipped;
+        lastEvent.success = true;
+      }
+
+      // The recovery strategy should have already positioned the context correctly
+      // for the recovery parser to succeed. If the strategy reported skipping tokens,
+      // we trust that it has done so.
+
+      // Now try the recovery parser
+      const recoveryParseResult = recoveryParser.parse(context);
+
+      if (recoveryParseResult.type === "success") {
+        // Recovery parser succeeded, return its result
+        return recoveryParseResult;
+      } else {
+        // Recovery parser also failed, return combined failure information
+        const combinedErrors = [
+          ...result.errors, // Original parser errors
+          ...recoveryParseResult.errors, // Recovery parser errors
+        ];
+
+        const recoveryFailureError = ParseError.error(
+          DiagnosticCode.RECOVERED_ERROR,
+          `Recovery parser failed after successful strategy '${strategy.name}'`,
+          context.span(),
+        );
+
+        return new ParseFailure([...combinedErrors, recoveryFailureError]);
+      }
     },
     pipe,
   };

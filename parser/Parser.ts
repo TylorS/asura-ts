@@ -1050,3 +1050,81 @@ export function keywordAsIdentifer(): Parser<Identifier> {
     pipe,
   };
 }
+
+// ===== ERROR RECOVERY COMBINATORS =====
+
+/**
+ * Synchronization combinator with predicate-based token skipping
+ * 
+ * Attempts to parse with the given parser, and if it fails, skips tokens 
+ * until the sync predicate returns true, then returns null.
+ * 
+ * @param parser - The parser to attempt first
+ * @param syncPredicate - Function that determines when to stop skipping tokens
+ * @param errorMessage - Optional custom error message for synchronization failure
+ * @returns Parser that returns T on success, null on synchronization, or failure if sync fails
+ */
+export function synchronize<T>(
+  parser: Parser<T>,
+  syncPredicate: SyncPredicate,
+  errorMessage?: string,
+): Parser<T | null> {
+  return {
+    parse(context: ParserContext): ParseResult<T | null> {
+      // First, try the main parser
+      const startPosition = context.getPosition();
+      const result = parser.parse(context);
+      
+      if (result.type === "success") {
+        return result;
+      }
+
+      // Parser failed, attempt synchronization
+      context.setPosition(startPosition);
+      
+      // Record the original failure
+      const originalErrors = result.errors;
+      
+      // Skip tokens until predicate returns true or we reach end of input
+      let tokensSkipped = 0;
+      while (!context.isAtEnd()) {
+        const token = context.peek();
+        
+        if (syncPredicate(token, context)) {
+          // Found synchronization point
+          const syncMessage = errorMessage || 
+            `Synchronized after skipping ${tokensSkipped} tokens`;
+          
+          // Add recovery information
+          context.addRecoveryError(
+            ParseError.info(
+              DiagnosticCode.RECOVERED_ERROR,
+              syncMessage,
+              token.span,
+            ),
+            "SynchronizationRecovery",
+          );
+          
+          return new ParseSuccess(null);
+        }
+        
+        context.consume();
+        tokensSkipped++;
+      }
+      
+      // Reached end of input without finding sync point
+      const syncFailureMessage = errorMessage || 
+        `Failed to synchronize: reached end of input after skipping ${tokensSkipped} tokens`;
+      
+      // Return failure with both original errors and sync failure
+      const syncError = ParseError.error(
+        DiagnosticCode.SYNC_FAILED,
+        syncFailureMessage,
+        context.span(),
+      );
+      
+      return new ParseFailure([...originalErrors, syncError]);
+    },
+    pipe,
+  };
+}

@@ -44,6 +44,8 @@ export enum DiagnosticCode {
   INSERTED_TOKEN = "P101",
   RECOVERED_AT = "P102",
   INCOMPLETE_FUNCTION = "P103",
+  RECOVERED_ERROR = "P104",
+  SYNC_FAILED = "P105",
 
   // Semantic errors (for future)
   UNDEFINED_IDENTIFIER = "S001",

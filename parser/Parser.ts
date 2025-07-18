@@ -1229,3 +1229,178 @@ export function recover<T, U>(
     pipe,
   };
 }
+
+/**
+ * Recoverable sequence combinator for partial parsing
+ *
+ * Like seq() but continues parsing even when individual elements fail,
+ * marking failed elements as null in the result tuple. Collects all errors
+ * from failed parsers and maintains position tracking for accurate error reporting.
+ *
+ * @param parsers - Array of parsers to execute in sequence
+ * @returns Parser that returns tuple with successful results and null for failed elements
+ */
+/**
+ * Recoverable sequence combinator for partial parsing (without automatic whitespace handling)
+ *
+ * Like sequence() but continues parsing even when individual elements fail,
+ * marking failed elements as null in the result tuple. Collects all errors
+ * from failed parsers and maintains position tracking for accurate error reporting.
+ * Does not automatically skip whitespace - parsers must handle whitespace themselves.
+ *
+ * @param parsers - Array of parsers to execute in sequence
+ * @returns Parser that returns tuple with successful results and null for failed elements
+ */
+export function recoverableSequence<Parsers extends ReadonlyArray<Parser.Any>>(
+  ...parsers: Parsers
+): Parser<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> | null }> {
+  return {
+    parse(
+      context: ParserContext,
+    ): ParseResult<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> | null }> {
+      const results: unknown[] = [];
+      const allErrors: ParseError[] = [];
+      let hasAnySuccess = false;
+
+      for (let i = 0; i < parsers.length; i++) {
+        const parser = parsers[i];
+        const startPosition = context.getPosition();
+        
+        const result = parser.parse(context);
+        
+        if (result.type === "success") {
+          results.push(result.value);
+          hasAnySuccess = true;
+        } else {
+          // Parser failed, mark as null and collect errors
+          results.push(null);
+          allErrors.push(...result.errors);
+          
+          // Reset position to where this parser started
+          context.setPosition(startPosition);
+          
+          // Add recovery information
+          const recoveryError = ParseError.info(
+            DiagnosticCode.RECOVERED_ERROR,
+            `Element ${i} failed in recoverable sequence, continuing with remaining elements`,
+            context.span(),
+          );
+          
+          context.addRecoveryError(recoveryError, "RecoverableSequence");
+          
+          // Advance position by one token to allow next parser to try the next token
+          // This is the key to recovery - we skip the problematic token
+          if (!context.isAtEnd()) {
+            context.consume();
+          }
+        }
+      }
+
+      // If we have any successful results, return success with partial results
+      // If all parsers failed, return failure with all collected errors
+      if (hasAnySuccess || allErrors.length === 0) {
+        return new ParseSuccess(
+          results as { [K in keyof Parsers]: Parser.Type<Parsers[K]> | null },
+        );
+      } else {
+        // All parsers failed, return failure
+        const sequenceError = ParseError.error(
+          DiagnosticCode.RECOVERED_ERROR,
+          `All elements failed in recoverable sequence`,
+          context.span(),
+        );
+        
+        return new ParseFailure([...allErrors, sequenceError]);
+      }
+    },
+    pipe,
+  };
+}
+
+/**
+ * Recoverable sequence combinator for partial parsing (with automatic whitespace handling)
+ *
+ * Like seq() but continues parsing even when individual elements fail,
+ * marking failed elements as null in the result tuple. Collects all errors
+ * from failed parsers and maintains position tracking for accurate error reporting.
+ * Automatically skips whitespace like the standard seq() combinator.
+ *
+ * @param parsers - Array of parsers to execute in sequence
+ * @returns Parser that returns tuple with successful results and null for failed elements
+ */
+export function recoverableSeq<Parsers extends ReadonlyArray<Parser.Any>>(
+  ...parsers: Parsers
+): Parser<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> | null }> {
+  return {
+    parse(
+      context: ParserContext,
+    ): ParseResult<{ [K in keyof Parsers]: Parser.Type<Parsers[K]> | null }> {
+      const results: unknown[] = [];
+      const allErrors: ParseError[] = [];
+      let hasAnySuccess = false;
+
+      // Skip initial whitespace like seq does
+      skipWhitespace(context);
+
+      for (let i = 0; i < parsers.length; i++) {
+        const parser = parsers[i];
+        const startPosition = context.getPosition();
+        
+        const result = parser.parse(context);
+        
+        if (result.type === "success") {
+          // Skip whitespace after successful parse, like seq does
+          skipWhitespace(context);
+          results.push(result.value);
+          hasAnySuccess = true;
+        } else {
+          // Parser failed, mark as null and collect errors
+          results.push(null);
+          allErrors.push(...result.errors);
+          
+          // Reset position to where this parser started
+          context.setPosition(startPosition);
+          
+          // Add recovery information
+          const recoveryError = ParseError.info(
+            DiagnosticCode.RECOVERED_ERROR,
+            `Element ${i} failed in recoverable sequence, continuing with remaining elements`,
+            context.span(),
+          );
+          
+          context.addRecoveryError(recoveryError, "RecoverableSequence");
+          
+          // Advance position by one token to allow next parser to try the next token
+          // This is the key to recovery - we skip the problematic token
+          if (!context.isAtEnd()) {
+            context.consume();
+          }
+          
+          // Skip whitespace after consuming the problematic token
+          skipWhitespace(context);
+        }
+      }
+
+      // Skip final whitespace like seq does
+      skipWhitespace(context);
+
+      // If we have any successful results, return success with partial results
+      // If all parsers failed, return failure with all collected errors
+      if (hasAnySuccess || allErrors.length === 0) {
+        return new ParseSuccess(
+          results as { [K in keyof Parsers]: Parser.Type<Parsers[K]> | null },
+        );
+      } else {
+        // All parsers failed, return failure
+        const sequenceError = ParseError.error(
+          DiagnosticCode.RECOVERED_ERROR,
+          `All elements failed in recoverable sequence`,
+          context.span(),
+        );
+        
+        return new ParseFailure([...allErrors, sequenceError]);
+      }
+    },
+    pipe,
+  };
+}

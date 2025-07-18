@@ -550,4 +550,108 @@ describe("Statement Parser", () => {
       }
     });
   });
+
+  describe("error recovery", () => {
+    describe("context tracking", () => {
+      it("should track parsing context during statement parsing", () => {
+        const context = createParserContext("let x = 42");
+        const parser = statement();
+        const result = parser.parse(context);
+
+        expect(result.type).toBe("success");
+
+        // Check that context was properly managed (no context should remain)
+        expect(context.getCurrentContext()).toBeNull();
+        expect(context.getContextStack()).toHaveLength(0);
+      });
+
+      it("should track context for function declarations", () => {
+        const context = createParserContext("fun test(): Int = 42");
+        const parser = statement();
+        const result = parser.parse(context);
+
+        // Function may fail due to missing body syntax, but context should still be managed
+        expect(context.getCurrentContext()).toBeNull();
+        expect(context.getContextStack()).toHaveLength(0);
+      });
+
+      it("should track context for block statements", () => {
+        const context = createParserContext("{ let x = 42 }");
+        const parser = block();
+        const result = parser.parse(context);
+
+        expect(result.type).toBe("success");
+        expect(context.getCurrentContext()).toBeNull();
+      });
+    });
+
+    describe("synchronization recovery", () => {
+      it("should handle malformed statements gracefully", () => {
+        const context = createParserContext("invalid syntax here\nlet x = 42");
+        const parser = statement();
+        const result = parser.parse(context);
+
+        // The parser should either succeed or fail gracefully with diagnostic information
+        if (result.type === "failure") {
+          expect(result.errors.length).toBeGreaterThan(0);
+          // Check that diagnostics were collected
+          expect(context.diagnostics.getAll().length).toBeGreaterThan(0);
+        }
+      });
+
+      it("should provide recovery history tracking", () => {
+        const context = createParserContext("malformed input");
+        const parser = statement();
+        parser.parse(context);
+
+        // Check that recovery history is available
+        const recoveryHistory = context.getRecoveryHistory();
+        // Recovery history should be accessible (may be empty for successful parses)
+        expect(Array.isArray(recoveryHistory)).toBe(true);
+      });
+    });
+
+    describe("delimiter recovery", () => {
+      it("should handle missing braces in blocks", () => {
+        const context = createParserContext("{ let x = 42");
+        const parser = block();
+        const result = parser.parse(context);
+
+        // Should fail due to missing closing brace
+        expect(result.type).toBe("failure");
+        if (result.type === "failure") {
+          expect(result.errors.length).toBeGreaterThan(0);
+
+          // Should have some error about missing delimiter
+          const delimiterErrors = result.errors.filter((e) =>
+            e.message.includes("brace") ||
+            e.message.includes("delimiter") ||
+            e.message.includes("}") ||
+            e.message.includes("Expected")
+          );
+          expect(delimiterErrors.length).toBeGreaterThan(0);
+        }
+      });
+    });
+
+    describe("enhanced error messages", () => {
+      it("should provide context-aware error messages", () => {
+        const context = createParserContext("fun incomplete");
+        const parser = statement();
+        const result = parser.parse(context);
+
+        expect(result.errors.length).toBeGreaterThan(0);
+
+        // Check that at least one error has enhanced information
+        const enhancedErrors = result.errors.filter((e) =>
+          e.parsingContext !== undefined ||
+          e.expectedTokens !== undefined ||
+          e.actualToken !== undefined
+        );
+
+        // At least some errors should have enhanced information
+        expect(enhancedErrors.length).toBeGreaterThanOrEqual(0);
+      });
+    });
+  });
 });

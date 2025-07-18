@@ -1,7 +1,13 @@
 import * as AST from "../../ast/mod.ts";
-import { Span } from "../../tokens/Span.ts";
+import { Span, SpanLocation } from "../../tokens/Span.ts";
 import { AsKeyword } from "../../tokens/Token.ts";
+import { DiagnosticCode } from "../../diagnostics/mod.ts";
 import * as Parser from "../Parser.ts";
+import {
+  DelimiterRecovery,
+  KeywordRecovery,
+  StatementBoundaryRecovery,
+} from "../ErrorRecovery.ts";
 import {
   expression,
   functionParameter,
@@ -15,22 +21,80 @@ import {
   typeReference,
 } from "./Type.ts";
 
+// Helper function to add parsing context tracking
+function withParsingContext<T>(
+  contextName: string,
+  expectedElements: string[],
+  parser: Parser.Parser<T>,
+): Parser.Parser<T> {
+  return {
+    parse(context: Parser.ParserContext): Parser.ParseResult<T> {
+      // Push parsing context
+      context.pushParsingContext({
+        name: contextName,
+        expectedElements,
+        recoveryStrategies: ["StatementBoundary"],
+        metadata: {},
+      });
+
+      try {
+        const result = parser.parse(context);
+        return result;
+      } finally {
+        // Always pop context, even if parsing fails
+        context.popParsingContext();
+      }
+    },
+  };
+}
+
 export function statement(): Parser.Parser<AST.Statement> {
-  return Parser.seq(
-    Parser.zeroOrMore(Parser.or(
-      Parser.token("Whitespace"),
-      Parser.token("Newline"),
-    )),
-    Parser.or(
-      comment(),
-      multilineComment(),
-      declaration(),
-      controlFlow(),
-      expressionStatement(),
+  return withParsingContext(
+    "statement",
+    ["comment", "declaration", "control-flow", "expression"],
+    Parser.seq(
+      Parser.zeroOrMore(Parser.or(
+        Parser.token("Whitespace"),
+        Parser.token("Newline"),
+      )),
+      Parser.synchronize(
+        Parser.or(
+          comment(),
+          multilineComment(),
+          declaration(),
+          controlFlow(),
+          expressionStatement(),
+        ),
+        (token) =>
+          token.kind === "Newline" ||
+          (token.kind === "Symbol" && (
+            token.symbol === "Semicolon" ||
+            token.symbol === "OpenBrace" ||
+            token.symbol === "CloseBrace"
+          )),
+        "Failed to parse statement, synchronizing to statement boundary",
+      ),
+    ).pipe(
+      Parser.map(([_, value]): AST.Statement | null => value),
+      // Handle null values from synchronization
+      (parser) => ({
+        parse(
+          context: Parser.ParserContext,
+        ): Parser.ParseResult<AST.Statement> {
+          const result = parser.parse(context);
+          if (result.type === "success" && result.value === null) {
+            // If synchronization returned null, we need to fail gracefully
+            return Parser.ParseFailure.error(
+              DiagnosticCode.INVALID_SYNTAX,
+              "Failed to parse statement after synchronization",
+              context.span(),
+            );
+          }
+          return result as Parser.ParseResult<AST.Statement>;
+        },
+      }),
+      withStatementTerminator,
     ),
-  ).pipe(
-    Parser.map(([_, value]): AST.Statement => value),
-    withStatementTerminator,
   );
 }
 
@@ -161,38 +225,42 @@ function namedImport(): Parser.Parser<AST.NamedImport> {
 }
 
 export function dataDeclaration(): Parser.Parser<AST.DataDeclaration> {
-  return Parser.seq(
-    Parser.optional(Parser.token("export")),
-    Parser.token("data"),
-    Parser.token("Identifier"),
-    Parser.optional(typeParametersList()),
-    Parser.symbol("="),
-    dataConstructor().pipe(
-      Parser.separatedBy(Parser.symbol("|")),
-    ),
-  ).pipe(
-    Parser.map(
-      (
-        [
-          exportKeyword,
-          dataKeyword,
-          name,
-          typeParameters,
-          _equals,
-          constructors,
-        ],
-      ) => {
-        return new AST.DataDeclaration(
-          exportKeyword,
-          name,
-          typeParameters?.typeParameters ?? [],
-          constructors,
-          new AST.Span(
-            exportKeyword?.span.start ?? dataKeyword.span.start,
-            constructors[constructors.length - 1].span.end,
-          ),
-        );
-      },
+  return withParsingContext(
+    "data-declaration",
+    ["export", "data", "identifier", "type-parameters", "constructors"],
+    Parser.seq(
+      Parser.optional(Parser.token("export")),
+      Parser.token("data"),
+      Parser.token("Identifier"),
+      Parser.optional(typeParametersList()),
+      Parser.symbol("="),
+      dataConstructor().pipe(
+        Parser.separatedBy(Parser.symbol("|")),
+      ),
+    ).pipe(
+      Parser.map(
+        (
+          [
+            exportKeyword,
+            dataKeyword,
+            name,
+            typeParameters,
+            _equals,
+            constructors,
+          ],
+        ) => {
+          return new AST.DataDeclaration(
+            exportKeyword,
+            name,
+            typeParameters?.typeParameters ?? [],
+            constructors,
+            new AST.Span(
+              exportKeyword?.span.start ?? dataKeyword.span.start,
+              constructors[constructors.length - 1].span.end,
+            ),
+          );
+        },
+      ),
     ),
   );
 }
@@ -292,51 +360,64 @@ export function effectDeclaration(): Parser.Parser<AST.EffectDeclaration> {
 }
 
 export function functionDeclaration(): Parser.Parser<AST.FunctionDeclaration> {
-  return Parser.seq(
-    Parser.optional(Parser.token("export")),
-    Parser.token("fun"),
-    Parser.token("Identifier"),
-    Parser.optional(typeParametersList()),
-    Parser.symbol("("),
-    functionParameter().pipe(
-      Parser.separatedBy(Parser.symbol(",")),
-    ),
-    Parser.symbol(")"),
-    Parser.symbol(":"),
-    Parser.optional(effectRecordSignature()),
-    type(),
-    returnExpressionOrBlock(),
-  ).pipe(
-    Parser.map(
-      (
-        [
-          exportKeyword,
-          funKeyword,
-          name,
-          typeParameters,
-          _lparen,
-          parameters,
-          _rparen,
-          _colon,
-          effectRecordSignature,
-          returnType,
-          returnExpressionOrBlock,
-        ],
-      ) => {
-        return new AST.FunctionDeclaration(
-          exportKeyword,
-          name,
-          typeParameters?.typeParameters ?? [],
-          parameters,
-          effectRecordSignature,
-          returnType,
-          returnExpressionOrBlock,
-          new AST.Span(
-            exportKeyword?.span.start ?? funKeyword.span.start,
-            returnExpressionOrBlock.span.end,
-          ),
-        );
-      },
+  return withParsingContext(
+    "function-declaration",
+    [
+      "export",
+      "fun",
+      "identifier",
+      "type-parameters",
+      "parameters",
+      "effects",
+      "return-type",
+      "body",
+    ],
+    Parser.seq(
+      Parser.optional(Parser.token("export")),
+      Parser.token("fun"),
+      Parser.token("Identifier"),
+      Parser.optional(typeParametersList()),
+      Parser.symbol("("),
+      functionParameter().pipe(
+        Parser.separatedBy(Parser.symbol(",")),
+      ),
+      Parser.symbol(")"),
+      Parser.symbol(":"),
+      Parser.optional(effectRecordSignature()),
+      type(),
+      returnExpressionOrBlock(),
+    ).pipe(
+      Parser.map(
+        (
+          [
+            exportKeyword,
+            funKeyword,
+            name,
+            typeParameters,
+            _lparen,
+            parameters,
+            _rparen,
+            _colon,
+            effectRecordSignature,
+            returnType,
+            returnExpressionOrBlock,
+          ],
+        ) => {
+          return new AST.FunctionDeclaration(
+            exportKeyword,
+            name,
+            typeParameters?.typeParameters ?? [],
+            parameters,
+            effectRecordSignature,
+            returnType,
+            returnExpressionOrBlock,
+            new AST.Span(
+              exportKeyword?.span.start ?? funKeyword.span.start,
+              returnExpressionOrBlock.span.end,
+            ),
+          );
+        },
+      ),
     ),
   );
 }
@@ -392,39 +473,51 @@ export function identiferOrDestructuring(): Parser.Parser<AST.Identifier> {
 }
 
 export function letDeclaration(): Parser.Parser<AST.LetDeclaration> {
-  return Parser.seq(
-    Parser.optional(Parser.token("export")),
-    Parser.token("let"),
-    Parser.optional(Parser.token("mut")),
-    identiferOrDestructuring(),
-    Parser.optional(Parser.seq(Parser.symbol(":"), type())),
-    Parser.symbol("="),
-    expression(),
-  ).pipe(
-    Parser.map(
-      (
-        [
-          exportKeyword,
-          letKeyword,
-          mutableKeyword,
-          name,
-          typeAnnotation,
-          _equals,
-          expression,
-        ],
-      ) => {
-        return new AST.LetDeclaration(
-          exportKeyword,
-          mutableKeyword,
-          name,
-          typeAnnotation?.[1] ?? null,
-          expression,
-          new AST.Span(
-            exportKeyword?.span.start ?? letKeyword.span.start,
-            expression.span.end,
-          ),
-        );
-      },
+  return withParsingContext(
+    "let-declaration",
+    [
+      "export",
+      "let",
+      "mut",
+      "identifier",
+      "type-annotation",
+      "assignment",
+      "expression",
+    ],
+    Parser.seq(
+      Parser.optional(Parser.token("export")),
+      Parser.token("let"),
+      Parser.optional(Parser.token("mut")),
+      identiferOrDestructuring(),
+      Parser.optional(Parser.seq(Parser.symbol(":"), type())),
+      Parser.symbol("="),
+      expression(),
+    ).pipe(
+      Parser.map(
+        (
+          [
+            exportKeyword,
+            letKeyword,
+            mutableKeyword,
+            name,
+            typeAnnotation,
+            _equals,
+            expression,
+          ],
+        ) => {
+          return new AST.LetDeclaration(
+            exportKeyword,
+            mutableKeyword,
+            name,
+            typeAnnotation?.[1] ?? null,
+            expression,
+            new AST.Span(
+              exportKeyword?.span.start ?? letKeyword.span.start,
+              expression.span.end,
+            ),
+          );
+        },
+      ),
     ),
   );
 }
@@ -605,22 +698,26 @@ export function forStatement(): Parser.Parser<AST.ForStatement> {
 }
 
 export function ifStatement(): Parser.Parser<AST.IfStatement> {
-  return Parser.seq(
-    Parser.token("if"),
-    expression(),
-    BlockWithControlFlow,
-    Parser.optional(Parser.zeroOrMore(elseIfStatement())),
-    Parser.optional(elseStatement()),
-  ).pipe(
-    Parser.map(([_if, condition, then, elseIfs, else_]) => {
-      return new AST.IfStatement(
-        condition,
-        then,
-        elseIfs ?? [],
-        else_ ?? null,
-        new AST.Span(_if.span.start, else_?.span.end ?? then.span.end),
-      );
-    }),
+  return withParsingContext(
+    "if-statement",
+    ["if", "condition", "then-block", "else-if", "else-block"],
+    Parser.seq(
+      Parser.token("if"),
+      expression(),
+      BlockWithControlFlow,
+      Parser.optional(Parser.zeroOrMore(elseIfStatement())),
+      Parser.optional(elseStatement()),
+    ).pipe(
+      Parser.map(([_if, condition, then, elseIfs, else_]) => {
+        return new AST.IfStatement(
+          condition,
+          then,
+          elseIfs ?? [],
+          else_ ?? null,
+          new AST.Span(_if.span.start, else_?.span.end ?? then.span.end),
+        );
+      }),
+    ),
   );
 }
 
@@ -686,33 +783,37 @@ const BLOCK_SEPARATOR = Parser.zeroOrMore(Parser.or(
 export function block<T = never>(
   ...statements: Parser.Parser<T>[]
 ): Parser.Parser<AST.Block<T>> {
-  return Parser.or(
-    Parser.lazy(statement),
-    returnStatement().pipe(withStatementTerminator),
-    ...statements.map(withStatementTerminator),
-  )
-    .pipe(
-      Parser.separatedBy(BLOCK_SEPARATOR),
-      Parser.optional,
-      Parser.delimitedBy(Parser.symbol("{"), Parser.symbol("}")),
-      Parser.map(({ before, content, after }) =>
-        new AST.Block<T>(
-          content ?? [],
-          new AST.Span(before.span.start, after.span.end),
-        )
+  return withParsingContext(
+    "block",
+    ["statement", "return-statement", "control-flow"],
+    Parser.or(
+      Parser.lazy(statement),
+      returnStatement().pipe(withStatementTerminator),
+      ...statements.map(withStatementTerminator),
+    )
+      .pipe(
+        Parser.separatedBy(BLOCK_SEPARATOR),
+        Parser.optional,
+        Parser.delimitedBy(Parser.symbol("{"), Parser.symbol("}")),
+        Parser.map(({ before, content, after }) =>
+          new AST.Block<T>(
+            content ?? [],
+            new AST.Span(before.span.start, after.span.end),
+          )
+        ),
       ),
-    );
+  );
 }
 
 export function returnStatement(): Parser.Parser<AST.ReturnStatement> {
   return Parser.seq(
     Parser.token("return"),
-    expression(),
+    Parser.optional(expression()),
   ).pipe(
     Parser.map(([_return, expression]) =>
       new AST.ReturnStatement(
         expression,
-        new AST.Span(_return.span.start, expression.span.end),
+        new AST.Span(_return.span.start, (expression || _return).span.end),
       )
     ),
   );

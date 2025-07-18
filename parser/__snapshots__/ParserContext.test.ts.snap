@@ -1,0 +1,65 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ParserContext Extensions > Diagnostic formatting snapshots > should format basic error diagnostic 1`] = `
+"✗ ERROR[P001]: Expected semicolon after variable declaration
+  --> example.ts:2:6
+   1 | let myVar = 42
+"
+`;
+
+exports[`ParserContext Extensions > Diagnostic formatting snapshots > should format enhanced error with context information 1`] = `
+"✗ ERROR[P004]: Missing closing parenthesis in function parameter list
+  --> example.ts:2:17
+   1 | function myFunc(param { return 42; }
+
+  help: Insert closing parenthesis
+        Replace with: ")"
+
+  note: Function declaration started here
+        --> example.ts:2:1
+"
+`;
+
+exports[`ParserContext Extensions > Diagnostic formatting snapshots > should format multiple recovery errors with history 1`] = `
+"✗ ERROR[P002]: Expected opening parenthesis after 'if'
+  --> example.ts:2:3
+   1 | if condition
+ > 2 |   statement;
+         ^
+
+
+⚠ WARNING[P101]: Inserted missing opening parenthesis
+  --> example.ts:2:4
+   1 | if condition
+ > 2 |   statement;
+          ^
+
+
+✗ ERROR[P002]: Expected closing parenthesis after condition
+  --> example.ts:2:13
+   1 | if condition
+ > 2 |   statement;
+                   ^
+"
+`;
+
+exports[`ParserContext Extensions > Diagnostic formatting snapshots > should format synchronization recovery scenario 1`] = `
+"✗ ERROR[P005]: Invalid function declaration syntax
+  --> example.ts:2:17
+   1 | function broken syntax here
+ > 2 | function valid() { return 42; }
+                       ^^^^^^^^^^^^
+
+
+ℹ INFO[P102]: Recovered parsing at next function declaration
+  --> example.ts:3:1
+   2 | function valid() { return 42; }
+"
+`;
+
+exports[`ParserContext Extensions > Diagnostic formatting snapshots > should format virtual token insertion diagnostic 1`] = `
+"ℹ INFO[P101]: Inserted virtual CloseParen
+  --> example.ts:2:11
+   1 | function() { return 42; }
+"
+`;

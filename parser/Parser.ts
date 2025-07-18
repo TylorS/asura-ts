@@ -22,6 +22,8 @@ const EMPTY_SPAN = new Span(
 
 export class ParserContext {
   private position: number = 0;
+  private contextStack: ParsingContext[] = [];
+  private recoveryHistory: RecoveryEvent[] = [];
 
   constructor(
     readonly fileName: string,
@@ -135,6 +137,79 @@ export class ParserContext {
   getTokensRemaining(): number {
     return this.tokens.length - this.position;
   }
+
+  // Context stack management methods
+  pushParsingContext(context: ParsingContext): void {
+    this.contextStack.push(context);
+  }
+
+  popParsingContext(): ParsingContext | null {
+    return this.contextStack.pop() || null;
+  }
+
+  getCurrentContext(): ParsingContext | null {
+    return this.contextStack[this.contextStack.length - 1] || null;
+  }
+
+  getContextStack(): ParsingContext[] {
+    return [...this.contextStack];
+  }
+
+  // Recovery point management
+  markRecoveryPoint(): RecoveryPoint {
+    return {
+      position: this.position,
+      diagnosticCount: this.diagnostics.getAll().length,
+      timestamp: Date.now(),
+    };
+  }
+
+  restoreToRecoveryPoint(point: RecoveryPoint): void {
+    this.position = point.position;
+    // Note: We don't remove diagnostics as they should be preserved for reporting
+  }
+
+  // Synchronization and virtual token insertion methods
+  skipToSynchronizationPoint(predicate: SyncPredicate): void {
+    while (!this.isAtEnd()) {
+      const token = this.peek();
+      if (predicate(token, this)) {
+        break;
+      }
+      this.consume();
+    }
+  }
+
+  insertVirtualToken(tokenKind: string, span: Span): void {
+    // Virtual tokens are conceptual - we record the insertion attempt
+    // but don't modify the actual token stream
+    this.addRecoveryError(
+      ParseError.info(
+        DiagnosticCode.INSERTED_TOKEN,
+        `Inserted virtual ${tokenKind}`,
+        span,
+      ),
+      "VirtualTokenInsertion",
+    );
+  }
+
+  // Enhanced error reporting methods
+  addRecoveryError(error: ParseError, recoveryStrategy: string): void {
+    const recoveryEvent: RecoveryEvent = {
+      strategy: recoveryStrategy,
+      position: this.position,
+      tokensSkipped: 0, // Will be updated by recovery strategies
+      success: true, // Assume success unless specified otherwise
+      message: error.message,
+    };
+
+    this.recoveryHistory.push(recoveryEvent);
+    this.addFailure(error);
+  }
+
+  getRecoveryHistory(): RecoveryEvent[] {
+    return [...this.recoveryHistory];
+  }
 }
 
 export interface Parser<T> extends Pipeable {
@@ -244,6 +319,24 @@ export interface RecoveryAttempt {
   tokensSkipped: number;
   message: string;
 }
+
+// Recovery point and event interfaces
+export interface RecoveryPoint {
+  position: number;
+  diagnosticCount: number;
+  timestamp: number;
+}
+
+export interface RecoveryEvent {
+  strategy: string;
+  position: number;
+  tokensSkipped: number;
+  success: boolean;
+  message: string;
+}
+
+// Synchronization predicate type
+export type SyncPredicate = (token: Token, context: ParserContext) => boolean;
 
 // Recovery result node types
 export class RecoveredNode<T> {

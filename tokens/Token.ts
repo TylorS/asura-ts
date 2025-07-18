@@ -39,7 +39,7 @@ export type Token =
   | WithKeyword;
 
 export abstract class Spanned<Kind extends string> {
-  constructor(readonly kind: Kind, readonly span: Span) { }
+  constructor(readonly kind: Kind, readonly span: Span) {}
 
   abstract toString(): string;
 }
@@ -282,7 +282,7 @@ export class Symbol<T extends SymbolKind> extends Spanned<"Symbol"> {
   }
 
   override toString(): string {
-    return this.text
+    return this.text;
   }
 }
 

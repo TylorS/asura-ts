@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { WatGenerator } from "./WatGenerator.ts";
 import { WatModule } from "./types.ts";
 
@@ -44,7 +44,12 @@ describe("WatGenerator", () => {
     const module: WatModule = {
       imports: [
         { module: "env", name: "memory", kind: "memory" },
-        { module: "env", name: "log", kind: "func", type: "(func (param i32))" },
+        {
+          module: "env",
+          name: "log",
+          kind: "func",
+          type: "(func (param i32))",
+        },
       ],
       exports: [],
       functions: [],
@@ -110,4 +115,4 @@ describe("WatGenerator", () => {
       )"
     `);
   });
-}); 
+});

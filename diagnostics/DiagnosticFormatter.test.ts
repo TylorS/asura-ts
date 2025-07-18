@@ -1,26 +1,26 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { 
-  DiagnosticFormatter, 
-  formatDiagnostic, 
-  formatDiagnostics, 
-} from './DiagnosticFormatter.ts';
-import { 
-  Diagnostic, 
-  DiagnosticSeverity, 
-  DiagnosticCode 
-} from './Diagnostic.ts';
-import { Span, SpanLocation } from '../tokens/Span.ts';
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  DiagnosticFormatter,
+  formatDiagnostic,
+  formatDiagnostics,
+} from "./DiagnosticFormatter.ts";
+import {
+  Diagnostic,
+  DiagnosticCode,
+  DiagnosticSeverity,
+} from "./Diagnostic.ts";
+import { Span, SpanLocation } from "../tokens/Span.ts";
 
 // Helper function to create test spans
 function createSpan(
-  startLine: number, 
-  startCol: number, 
-  endLine: number, 
-  endCol: number
+  startLine: number,
+  startCol: number,
+  endLine: number,
+  endCol: number,
 ): Span {
   return new Span(
     new SpanLocation(startLine, startCol, startLine * 100 + startCol),
-    new SpanLocation(endLine, endCol, endLine * 100 + endCol)
+    new SpanLocation(endLine, endCol, endLine * 100 + endCol),
   );
 }
 
@@ -33,21 +33,21 @@ function add(a, b) {
 
 let result = add(x, y);`;
 
-describe('DiagnosticFormatter', () => {
+describe("DiagnosticFormatter", () => {
   let formatter: DiagnosticFormatter;
 
   beforeEach(() => {
     formatter = new DiagnosticFormatter();
-    formatter.setSource('test.asura', sampleSource);
+    formatter.setSource("test.asura", sampleSource);
   });
 
-  it('should format a basic error diagnostic', () => {
+  it("should format a basic error diagnostic", () => {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.ERROR,
       DiagnosticCode.UNEXPECTED_TOKEN,
       'Unexpected token "{"',
       createSpan(0, 8, 0, 10), // Points to "42" in first line
-      'test.asura'
+      "test.asura",
     );
 
     const formatted = formatter.format(diagnostic);
@@ -62,14 +62,14 @@ describe('DiagnosticFormatter', () => {
     `);
   });
 
-  it('should format a warning with fix suggestion', () => {
+  it("should format a warning with fix suggestion", () => {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.WARNING,
       DiagnosticCode.MISSING_SEMICOLON,
-      'Missing semicolon',
+      "Missing semicolon",
       createSpan(1, 21, 1, 21), // End of second line
-      'test.asura'
-    ).withFix('Add semicolon', ';');
+      "test.asura",
+    ).withFix("Add semicolon", ";");
 
     const formatted = formatter.format(diagnostic);
 
@@ -87,20 +87,20 @@ describe('DiagnosticFormatter', () => {
     `);
   });
 
-  it('should format an error with multiple fixes', () => {
+  it("should format an error with multiple fixes", () => {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.ERROR,
       DiagnosticCode.TYPE_MISMATCH,
-      'Type mismatch: expected Int, found String',
+      "Type mismatch: expected Int, found String",
       createSpan(6, 20, 6, 21), // Points to "y" in last line: "let result = add(x, y);"
-      'test.asura'
+      "test.asura",
     )
-    .withFix('Cast to Int', 'parseInt(y)')
-    .withFix('Change parameter type', ': String');
+      .withFix("Cast to Int", "parseInt(y)")
+      .withFix("Change parameter type", ": String");
 
     const formatted = formatter.format(diagnostic);
 
-        expect(formatted).toMatchInlineSnapshot(`
+    expect(formatted).toMatchInlineSnapshot(`
           "✗ ERROR[S002]: Type mismatch: expected Int, found String
             --> test.asura:7:21
              6 | 
@@ -115,28 +115,28 @@ describe('DiagnosticFormatter', () => {
         `);
   });
 
-  it('should format a diagnostic with related information', () => {
+  it("should format a diagnostic with related information", () => {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.ERROR,
       DiagnosticCode.UNDEFINED_IDENTIFIER,
       'Undefined variable "z"',
       createSpan(6, 20, 6, 21), // Points to "y" in last line, pretending it's "z"
-      'test.asura'
+      "test.asura",
     )
-    .withRelatedInfo(
-      'Variable "x" declared here',
-      createSpan(0, 4, 0, 5),
-      'test.asura'
-    )
-    .withRelatedInfo(
-      'Variable "y" declared here', 
-      createSpan(1, 4, 1, 5),
-      'test.asura'
-    );
+      .withRelatedInfo(
+        'Variable "x" declared here',
+        createSpan(0, 4, 0, 5),
+        "test.asura",
+      )
+      .withRelatedInfo(
+        'Variable "y" declared here',
+        createSpan(1, 4, 1, 5),
+        "test.asura",
+      );
 
     const formatted = formatter.format(diagnostic);
 
-        expect(formatted).toMatchInlineSnapshot(`
+    expect(formatted).toMatchInlineSnapshot(`
           "✗ ERROR[S001]: Undefined variable "z"
             --> test.asura:7:21
              6 | 
@@ -151,13 +151,13 @@ describe('DiagnosticFormatter', () => {
         `);
   });
 
-  it('should format diagnostic spanning multiple lines', () => {
+  it("should format diagnostic spanning multiple lines", () => {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.ERROR,
       DiagnosticCode.UNCLOSED_DELIMITER,
-      'Unclosed function body',
+      "Unclosed function body",
       createSpan(2, 19, 4, 1), // From opening brace to closing brace
-      'test.asura'
+      "test.asura",
     );
 
     const formatted = formatter.format(diagnostic);
@@ -177,13 +177,13 @@ describe('DiagnosticFormatter', () => {
     `);
   });
 
-  it('should format without source code when option is disabled', () => {
+  it("should format without source code when option is disabled", () => {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.INFO,
       DiagnosticCode.RECOVERED_AT,
-      'Parser recovered here',
+      "Parser recovered here",
       createSpan(2, 0, 2, 8),
-      'test.asura'
+      "test.asura",
     );
 
     const formatted = formatter.format(diagnostic, { showSourceCode: false });
@@ -195,13 +195,13 @@ describe('DiagnosticFormatter', () => {
     `);
   });
 
-  it('should format with custom context lines', () => {
+  it("should format with custom context lines", () => {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.WARNING,
       DiagnosticCode.SKIPPED_TOKENS,
-      'Skipped malformed tokens',
+      "Skipped malformed tokens",
       createSpan(2, 9, 2, 12), // "add" in function declaration
-      'test.asura'
+      "test.asura",
     );
 
     const formatted = formatter.format(diagnostic, { maxContextLines: 1 });
@@ -215,16 +215,16 @@ describe('DiagnosticFormatter', () => {
     `);
   });
 
-  it('should format with fixes disabled', () => {
+  it("should format with fixes disabled", () => {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.ERROR,
       DiagnosticCode.EXPECTED_TOKEN,
       'Expected ";" after statement',
       createSpan(1, 21, 1, 21),
-      'test.asura'
+      "test.asura",
     )
-    .withFix('Insert semicolon', ';')
-    .withFix('Remove newline', '');
+      .withFix("Insert semicolon", ";")
+      .withFix("Remove newline", "");
 
     const formatted = formatter.format(diagnostic, { showFixes: false });
 
@@ -239,13 +239,13 @@ describe('DiagnosticFormatter', () => {
     `);
   });
 
-  it('should handle diagnostic at beginning of file', () => {
+  it("should handle diagnostic at beginning of file", () => {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.ERROR,
       DiagnosticCode.UNEXPECTED_TOKEN,
       'Unexpected keyword "let"',
       createSpan(0, 0, 0, 3),
-      'test.asura'
+      "test.asura",
     );
 
     const formatted = formatter.format(diagnostic);
@@ -260,13 +260,13 @@ describe('DiagnosticFormatter', () => {
     `);
   });
 
-  it('should handle diagnostic at end of file', () => {
+  it("should handle diagnostic at end of file", () => {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.WARNING,
       DiagnosticCode.MISSING_SEMICOLON,
-      'Missing semicolon at end of file',
+      "Missing semicolon at end of file",
       createSpan(6, 22, 6, 23), // Points to end of last line "let result = add(x, y);"
-      'test.asura'
+      "test.asura",
     );
 
     const formatted = formatter.format(diagnostic);
@@ -281,22 +281,22 @@ describe('DiagnosticFormatter', () => {
     `);
   });
 
-  it('should format multiple diagnostics', () => {
+  it("should format multiple diagnostics", () => {
     const diagnostics = [
       new Diagnostic(
         DiagnosticSeverity.ERROR,
         DiagnosticCode.UNEXPECTED_TOKEN,
-        'Unexpected token',
+        "Unexpected token",
         createSpan(0, 8, 0, 10),
-        'main.asura'
+        "main.asura",
       ),
       new Diagnostic(
         DiagnosticSeverity.WARNING,
         DiagnosticCode.MISSING_SEMICOLON,
-        'Missing semicolon',
+        "Missing semicolon",
         createSpan(1, 21, 1, 21),
-        'main.asura'
-      ).withFix('Add semicolon', ';')
+        "main.asura",
+      ).withFix("Add semicolon", ";"),
     ];
 
     const formatted = formatDiagnostics(diagnostics, sampleSource);
@@ -322,17 +322,41 @@ describe('DiagnosticFormatter', () => {
     `);
   });
 
-  it('should show all diagnostic severity symbols', () => {
+  it("should show all diagnostic severity symbols", () => {
     const diagnostics = [
-      new Diagnostic(DiagnosticSeverity.ERROR, DiagnosticCode.INVALID_SYNTAX, 'Error message', createSpan(0, 0, 0, 1), 'test.asura'),
-      new Diagnostic(DiagnosticSeverity.WARNING, DiagnosticCode.SKIPPED_TOKENS, 'Warning message', createSpan(0, 0, 0, 1), 'test.asura'),
-      new Diagnostic(DiagnosticSeverity.INFO, DiagnosticCode.RECOVERED_AT, 'Info message', createSpan(0, 0, 0, 1), 'test.asura'),
-      new Diagnostic(DiagnosticSeverity.HINT, DiagnosticCode.RECOVERED_AT, 'Hint message', createSpan(0, 0, 0, 1), 'test.asura')
+      new Diagnostic(
+        DiagnosticSeverity.ERROR,
+        DiagnosticCode.INVALID_SYNTAX,
+        "Error message",
+        createSpan(0, 0, 0, 1),
+        "test.asura",
+      ),
+      new Diagnostic(
+        DiagnosticSeverity.WARNING,
+        DiagnosticCode.SKIPPED_TOKENS,
+        "Warning message",
+        createSpan(0, 0, 0, 1),
+        "test.asura",
+      ),
+      new Diagnostic(
+        DiagnosticSeverity.INFO,
+        DiagnosticCode.RECOVERED_AT,
+        "Info message",
+        createSpan(0, 0, 0, 1),
+        "test.asura",
+      ),
+      new Diagnostic(
+        DiagnosticSeverity.HINT,
+        DiagnosticCode.RECOVERED_AT,
+        "Hint message",
+        createSpan(0, 0, 0, 1),
+        "test.asura",
+      ),
     ];
 
-    const severitySymbols = diagnostics.map(d => {
+    const severitySymbols = diagnostics.map((d) => {
       const formatted = formatter.format(d, { showSourceCode: false });
-      return formatted.split(' ')[0]; // Extract just the symbol
+      return formatted.split(" ")[0]; // Extract just the symbol
     });
 
     expect(severitySymbols).toMatchInlineSnapshot(`
@@ -346,14 +370,14 @@ describe('DiagnosticFormatter', () => {
   });
 });
 
-describe('Convenience Functions', () => {
-  it('should format single diagnostic with convenience function', () => {
+describe("Convenience Functions", () => {
+  it("should format single diagnostic with convenience function", () => {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.ERROR,
       DiagnosticCode.INVALID_SYNTAX,
-      'Invalid syntax detected',
+      "Invalid syntax detected",
       createSpan(2, 13, 2, 14),
-      'convenience.asura'
+      "convenience.asura",
     );
 
     const formatted = formatDiagnostic(diagnostic, sampleSource);
@@ -369,22 +393,22 @@ describe('Convenience Functions', () => {
     `);
   });
 
-  it('should format multiple diagnostics with convenience function', () => {
+  it("should format multiple diagnostics with convenience function", () => {
     const diagnostics = [
       new Diagnostic(
         DiagnosticSeverity.WARNING,
         DiagnosticCode.SKIPPED_TOKENS,
-        'First warning',
+        "First warning",
         createSpan(0, 0, 0, 3),
-        'batch.asura'
+        "batch.asura",
       ),
       new Diagnostic(
         DiagnosticSeverity.ERROR,
         DiagnosticCode.PREMATURE_EOF,
-        'Unexpected end of input',
+        "Unexpected end of input",
         createSpan(6, 22, 6, 23), // Points to end of last line "let result = add(x, y);"
-        'batch.asura'
-      )
+        "batch.asura",
+      ),
     ];
 
     const formatted = formatDiagnostics(diagnostics, sampleSource);
@@ -407,17 +431,17 @@ describe('Convenience Functions', () => {
   });
 });
 
-describe('DiagnosticFormatter - Edge Cases', () => {
-  it('should handle diagnostic without source code', () => {
+describe("DiagnosticFormatter - Edge Cases", () => {
+  it("should handle diagnostic without source code", () => {
     const formatter = new DiagnosticFormatter();
     // Note: not setting source code
 
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.ERROR,
       DiagnosticCode.INVALID_SYNTAX,
-      'Parse error without source',
+      "Parse error without source",
       createSpan(1, 5, 1, 10),
-      'missing.asura'
+      "missing.asura",
     );
 
     const formatted = formatter.format(diagnostic);
@@ -429,16 +453,16 @@ describe('DiagnosticFormatter - Edge Cases', () => {
     `);
   });
 
-  it('should handle zero-width spans', () => {
+  it("should handle zero-width spans", () => {
     const formatter = new DiagnosticFormatter();
-    formatter.setSource('zero.asura', 'let x = 42;');
+    formatter.setSource("zero.asura", "let x = 42;");
 
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.WARNING,
       DiagnosticCode.INSERTED_TOKEN,
-      'Inserted missing token',
+      "Inserted missing token",
       createSpan(0, 10, 0, 10), // Zero-width span
-      'zero.asura'
+      "zero.asura",
     );
 
     const formatted = formatter.format(diagnostic);
@@ -453,52 +477,52 @@ describe('DiagnosticFormatter - Edge Cases', () => {
   });
 });
 
-describe('DiagnosticFormatter - Parser Integration Scenarios', () => {
-  it('should format parser recovery scenarios', () => {
+describe("DiagnosticFormatter - Parser Integration Scenarios", () => {
+  it("should format parser recovery scenarios", () => {
     const formatter = new DiagnosticFormatter();
     const brokenCode = `let x = 42
 let y = "hello"
 function broken(a, b {
   return unknown_var;
 }`;
-    formatter.setSource('broken.asura', brokenCode);
+    formatter.setSource("broken.asura", brokenCode);
 
     const recoveryDiagnostics = [
       new Diagnostic(
         DiagnosticSeverity.WARNING,
         DiagnosticCode.MISSING_SEMICOLON,
-        'Missing semicolon',
+        "Missing semicolon",
         createSpan(0, 10, 0, 10),
-        'broken.asura'
-      ).withFix('Add semicolon', ';'),
-      
+        "broken.asura",
+      ).withFix("Add semicolon", ";"),
+
       new Diagnostic(
         DiagnosticSeverity.ERROR,
         DiagnosticCode.UNCLOSED_DELIMITER,
-        'Missing closing parenthesis',
+        "Missing closing parenthesis",
         createSpan(2, 15, 2, 15),
-        'broken.asura'
-      ).withFix('Add closing parenthesis', ')'),
-      
+        "broken.asura",
+      ).withFix("Add closing parenthesis", ")"),
+
       new Diagnostic(
         DiagnosticSeverity.ERROR,
         DiagnosticCode.UNDEFINED_IDENTIFIER,
         'Undefined variable "unknown_var"',
         createSpan(3, 9, 3, 20),
-        'broken.asura'
+        "broken.asura",
       ).withRelatedInfo(
-        'Consider declaring the variable first',
+        "Consider declaring the variable first",
         createSpan(0, 0, 0, 3),
-        'broken.asura'
+        "broken.asura",
       ),
-      
+
       new Diagnostic(
         DiagnosticSeverity.INFO,
         DiagnosticCode.RECOVERED_AT,
-        'Parser recovered after error',
+        "Parser recovered after error",
         createSpan(4, 0, 4, 1),
-        'broken.asura'
-      )
+        "broken.asura",
+      ),
     ];
 
     const formatted = formatter.formatMany(recoveryDiagnostics);
@@ -544,4 +568,4 @@ function broken(a, b {
       "
     `);
   });
-}); 
+});

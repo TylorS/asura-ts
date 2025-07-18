@@ -29,7 +29,7 @@ export function statement(): Parser.Parser<AST.Statement> {
       expressionStatement(),
     ),
   ).pipe(
-    Parser.map(([_, value]) => value),
+    Parser.map(([_, value]): AST.Statement => value),
     withStatementTerminator,
   );
 }

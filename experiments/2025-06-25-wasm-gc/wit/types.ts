@@ -50,7 +50,7 @@ export interface WitType {
   kind: WitTypeKind;
 }
 
-export type WitTypeKind = 
+export type WitTypeKind =
   | { kind: "primitive"; type: WitPrimitiveType }
   | { kind: "record"; fields: WitField[] }
   | { kind: "variant"; cases: WitCase[] }
@@ -60,7 +60,20 @@ export type WitTypeKind =
   | { kind: "result"; ok?: WitTypeReference; error?: WitTypeReference }
   | { kind: "list"; type: WitTypeReference };
 
-export type WitPrimitiveType = "u8" | "u16" | "u32" | "u64" | "s8" | "s16" | "s32" | "s64" | "float32" | "float64" | "char" | "bool" | "string";
+export type WitPrimitiveType =
+  | "u8"
+  | "u16"
+  | "u32"
+  | "u64"
+  | "s8"
+  | "s16"
+  | "s32"
+  | "s64"
+  | "float32"
+  | "float64"
+  | "char"
+  | "bool"
+  | "string";
 
 export interface WitField {
   name: string;
@@ -72,4 +85,4 @@ export interface WitCase {
   type?: WitTypeReference;
 }
 
-export type WitTypeReference = string | { name: string; package?: string }; 
+export type WitTypeReference = string | { name: string; package?: string };

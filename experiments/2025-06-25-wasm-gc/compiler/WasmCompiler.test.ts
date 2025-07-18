@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { WasmCompiler } from "./WasmCompiler.ts";
 
 describe("WasmCompiler", () => {
@@ -10,7 +10,7 @@ describe("WasmCompiler", () => {
 
   it("should check wasm-tools availability", async () => {
     const result = await compiler.checkWasmTools();
-    
+
     // The result depends on whether wasm-tools is installed
     expect(typeof result.available).toBe("boolean");
     if (result.available) {
@@ -39,7 +39,7 @@ describe("WasmCompiler", () => {
       expect(result.watPath).toBeDefined();
       expect(result.size).toBeGreaterThan(0);
       expect(result.errors).toEqual([]);
-      
+
       // Validate the generated WASM
       if (result.wasmPath) {
         const validation = await compiler.validateWasm(result.wasmPath);
@@ -49,7 +49,7 @@ describe("WasmCompiler", () => {
     } else {
       // If wasm-tools is not available, we should get appropriate errors
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some(e => e.includes("wasm-tools"))).toBe(true);
+      expect(result.errors.some((e) => e.includes("wasm-tools"))).toBe(true);
     }
   });
 
@@ -68,7 +68,7 @@ describe("WasmCompiler", () => {
     // Should fail due to invalid instruction
     expect(result.success).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors.some(e => e.includes("invalid"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("invalid"))).toBe(true);
   });
 
   it("should compile with optimization", async () => {
@@ -146,7 +146,7 @@ describe("WasmCompiler", () => {
 
     if (result.success && result.wasmPath) {
       const info = await compiler.getWasmInfo(result.wasmPath);
-      
+
       expect(info.functions).toBeGreaterThan(0);
       expect(info.memories).toBeGreaterThan(0);
       expect(info.globals).toBeGreaterThan(0);
@@ -189,8 +189,8 @@ world test-world {
     // Test with a non-existent path
     const customCompiler = new WasmCompiler("/non/existent/path");
     const result = await customCompiler.checkWasmTools();
-    
+
     expect(result.available).toBe(false);
     expect(result.error).toBeDefined();
   });
-}); 
+});

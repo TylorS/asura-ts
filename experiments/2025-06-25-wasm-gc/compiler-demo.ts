@@ -46,7 +46,7 @@ async function runCompilerDemo() {
     packageName: "record-demo",
   });
 
-  console.log("Expression: { name: \"Alice\", age: 30 }");
+  console.log('Expression: { name: "Alice", age: 30 }');
   console.log("WAT:");
   console.log(recordResult.wat);
   console.log("\nWIT:");
@@ -61,7 +61,7 @@ async function runCompilerDemo() {
     packageName: "let-demo",
   });
 
-  console.log("Expression: let id = (x) => x in (id(42), id(\"hello\"))");
+  console.log('Expression: let id = (x) => x in (id(42), id("hello"))');
   console.log("WAT:");
   console.log(letResult.wat);
   console.log("\nWIT:");
@@ -82,7 +82,7 @@ async function runCompilerDemo() {
   console.log("\nWIT:");
   console.log(composeResult.wit);
   console.log("");
-  console.log("Errors:", composeResult.errors.map(e => e.message));
+  console.log("Errors:", composeResult.errors.map((e) => e.message));
 
   // Demo 6: Option types
   console.log("=== 6. Option Types ===");
@@ -103,7 +103,7 @@ async function runCompilerDemo() {
   console.log("=== 7. Error Handling ===");
   const errorExpr = ExpressionBuilder.app(
     ExpressionBuilder.num(42), // This should fail - can't apply a number
-    ExpressionBuilder.num(10)
+    ExpressionBuilder.num(10),
   );
   const errorResult = await compiler.compile(errorExpr, {
     moduleName: "error-demo",
@@ -111,7 +111,7 @@ async function runCompilerDemo() {
   });
 
   console.log("Expression: 42(10) (invalid - applying number)");
-  console.log("Errors:", errorResult.errors.map(e => e.message));
+  console.log("Errors:", errorResult.errors.map((e) => e.message));
   console.log("");
 
   console.log("✅ Compiler demo completed!");
@@ -128,4 +128,4 @@ async function runCompilerDemo() {
 // Run the demo
 if (typeof window === "undefined") {
   runCompilerDemo();
-} 
+}

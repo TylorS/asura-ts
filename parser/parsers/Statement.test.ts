@@ -6,7 +6,12 @@ import {
 } from "../../diagnostics/mod.ts";
 import { tokenizeToArray } from "../../tokens/Tokenizer.ts";
 import { ParserContext, ParseResult, ParseSuccess } from "../Parser.ts";
-import { block, breakStatement, continueStatement, statement } from "./Statement.ts";
+import {
+  block,
+  breakStatement,
+  continueStatement,
+  statement,
+} from "./Statement.ts";
 
 function createParserContext(source: string): ParserContext {
   const tokens = tokenizeToArray(source);
@@ -456,7 +461,7 @@ describe("Statement Parser", () => {
   describe("expression statements", () => {
     it("should parse expression statements", () => {
       const context = createParserContext("x + y");
-        const result = statement().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {

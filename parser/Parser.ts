@@ -145,8 +145,7 @@ export declare namespace Parser {
 
 export type ParseResult<T> =
   | ParseSuccess<T>
-  | ParseFailure
-  | ParseErrorRecovery;
+  | ParseFailure;
 
 export class ParseSuccess<T> implements Pipeable {
   readonly type = "success";
@@ -320,40 +319,6 @@ export class ParseError {
   }
 }
 
-export class ParseErrorRecovery {
-  readonly type = "error-recovery";
-  constructor(
-    readonly strategies: ReadonlyArray<ErrorRecoveryStrategy>,
-  ) {}
-
-  pipe() {
-    return pipeArguments(this, arguments);
-  }
-}
-
-export type ErrorRecoveryStrategy =
-  | SkipTokensStrategy
-  | InsertTokenStrategy
-  | ReplaceTokenStrategy;
-
-export interface SkipTokensStrategy {
-  readonly type: "skip-until-tokens";
-  readonly until: ReadonlyArray<
-    { readonly kind: Token["kind"]; readonly consume: boolean }
-  >;
-}
-
-export interface InsertTokenStrategy {
-  readonly type: "insert-token";
-  readonly token: Token;
-  readonly position: number;
-}
-
-export interface ReplaceTokenStrategy {
-  readonly type: "replace-token";
-  readonly token: Token;
-}
-
 // ===== BASIC PARSER COMBINATORS =====
 
 // Parse a specific token kind
@@ -439,7 +404,6 @@ export function or<Parsers extends ReadonlyArray<Parser.Any>>(
     parse(context: ParserContext): ParseResult<Parser.Type<Parsers[number]>> {
       const startPosition = context.getPosition();
       const failures: ParseError[] = [];
-      let errorRecovery: ParseErrorRecovery | null = null;
 
       for (const parser of parsers) {
         const result = parser.parse(context);
@@ -448,16 +412,7 @@ export function or<Parsers extends ReadonlyArray<Parser.Any>>(
         }
 
         context.setPosition(startPosition);
-
-        if (result.type === "failure") {
-          failures.push(...result.errors);
-        } else {
-          errorRecovery = result;
-        }
-      }
-
-      if (errorRecovery !== null) {
-        return errorRecovery;
+        failures.push(...result.errors);
       }
 
       return new ParseFailure(failures);
@@ -563,7 +518,6 @@ export function zeroOrMore<T>(
   };
 }
 
-
 export function oneOrMore<T>(
   parser: Parser<T>,
 ): Parser<T[]> {
@@ -636,15 +590,6 @@ export function catchFailure<U>(
       pipe,
     };
   };
-}
-
-export function withRecoveryStrategy(
-  ...strategies: ReadonlyArray<ErrorRecoveryStrategy>
-) {
-  return <T>(parser: Parser<T>) =>
-    parser.pipe(
-      catchFailure(() => new ParseErrorRecovery(strategies)),
-    );
 }
 
 export function lookAhead<T>(parser: Parser<T>): Parser<T> {

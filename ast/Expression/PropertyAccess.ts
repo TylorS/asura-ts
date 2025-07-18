@@ -4,7 +4,7 @@ import { Expression } from "./Expression.ts";
 
 export class PropertyAccess {
   readonly kind = "PropertyAccess";
-  
+
   constructor(
     public readonly object: Expression,
     public readonly property: Identifier,

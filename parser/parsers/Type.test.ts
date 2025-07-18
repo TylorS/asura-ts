@@ -205,8 +205,12 @@ describe("Type Parser", () => {
       if (result.type === "success") {
         expect(result.value).toBeInstanceOf(AST.RecordType);
         expect((result.value as AST.RecordType).fields).toHaveLength(2);
-        expect((result.value as AST.RecordType).fields[0]).toBeInstanceOf(AST.SpreadType);
-        expect((result.value as AST.RecordType).fields[1]).toBeInstanceOf(AST.SpreadType);
+        expect((result.value as AST.RecordType).fields[0]).toBeInstanceOf(
+          AST.SpreadType,
+        );
+        expect((result.value as AST.RecordType).fields[1]).toBeInstanceOf(
+          AST.SpreadType,
+        );
       }
     });
   });
@@ -352,7 +356,7 @@ describe("Type Parser", () => {
 
     it("should parse type reference with type arguments", () => {
       const context = createParserContext("List<Int>");
-        const result = type().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -479,8 +483,10 @@ describe("Type Parser", () => {
     });
 
     it("should parse union of function types", () => {
-      const context = createParserContext("((Int) => String) | ((String) => Int)");
-            const result = type().parse(context);
+      const context = createParserContext(
+        "((Int) => String) | ((String) => Int)",
+      );
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {

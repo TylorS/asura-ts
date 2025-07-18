@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { CodeGenerator } from "./CodeGenerator.ts";
 import { ExpressionBuilder } from "../../2025-06-17-type-inference-and-type-checking/ExpressionHelpers.ts";
 import { WasmTranslator } from "./WasmTranslator.ts";
@@ -14,24 +14,29 @@ describe("CodeGenerator - WAT Validation", () => {
   function validateWAT(expression: Expression, description: string) {
     it(`should generate valid WAT for ${description}`, async () => {
       // Generate IR
-      const ir = codeGenerator.generate(expression, { kind: "PrimitiveType", name: "number" });
-      
+      const ir = codeGenerator.generate(expression, {
+        kind: "PrimitiveType",
+        name: "number",
+      });
+
       // Convert IR to WAT module
-      const watModule = wasmTranslator.translate(ir, { moduleName: "test-module" });
-      
+      const watModule = wasmTranslator.translate(ir, {
+        moduleName: "test-module",
+      });
+
       // Convert WAT module to string
       const watGenerator = new WatGenerator(watModule);
       const wat = watGenerator.generate();
-      
+
       // Validate WAT
       const result = await wasmCompiler.compile(wat);
-      
+
       if (!result.success) {
         console.log(`WAT for ${description}:`);
         console.log(wat);
         console.log(`Errors:`, result.errors);
       }
-      
+
       expect(result.success).toBe(true);
       expect(result.errors).toEqual([]);
     });
@@ -40,16 +45,16 @@ describe("CodeGenerator - WAT Validation", () => {
   // Test 1: Number Literal
   validateWAT(
     ExpressionBuilder.num(42),
-    "number literal"
+    "number literal",
   );
 
   // Test 2: Function Application (Lambda)
   validateWAT(
     ExpressionBuilder.app(
       ExpressionBuilder.lambda("x", ExpressionBuilder.var("x")),
-      ExpressionBuilder.num(42)
+      ExpressionBuilder.num(42),
     ),
-    "function application with lambda"
+    "function application with lambda",
   );
 
   // Test 3: Let Binding
@@ -57,9 +62,9 @@ describe("CodeGenerator - WAT Validation", () => {
     ExpressionBuilder.let(
       "x",
       ExpressionBuilder.num(10),
-      ExpressionBuilder.var("x")
+      ExpressionBuilder.var("x"),
     ),
-    "let binding"
+    "let binding",
   );
 
   // Test 4: Record Creation
@@ -68,7 +73,7 @@ describe("CodeGenerator - WAT Validation", () => {
       name: ExpressionBuilder.str("Alice"),
       age: ExpressionBuilder.num(30),
     }),
-    "record creation"
+    "record creation",
   );
 
   // Test 5: Complex Let with Function Application
@@ -78,9 +83,9 @@ describe("CodeGenerator - WAT Validation", () => {
       ExpressionBuilder.num(10),
       ExpressionBuilder.app(
         ExpressionBuilder.lambda("y", ExpressionBuilder.var("y")),
-        ExpressionBuilder.var("x")
-      )
+        ExpressionBuilder.var("x"),
+      ),
     ),
-    "complex let with function application"
+    "complex let with function application",
   );
-}); 
+});

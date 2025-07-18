@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import * as AST from "../../ast/mod.ts";
 import { ParserContext, ParseResult, ParseSuccess } from "../Parser.ts";
 import { tokenizeToArray } from "../../tokens/Tokenizer.ts";
-import { DiagnosticCollection, formatDiagnostics } from "../../diagnostics/mod.ts";
+import {
+  DiagnosticCollection,
+  formatDiagnostics,
+} from "../../diagnostics/mod.ts";
 import { sourceFile } from "./SourceFile.ts";
 
 function createParserContext(source: string): ParserContext {
@@ -36,7 +39,7 @@ describe("SourceFile Parser", () => {
   it("should parse empty source file", () => {
     const context = createParserContext("");
     const result = sourceFile("test.ts").parse(context);
-    
+
     expect(result.type).toBe("success");
     if (result.type === "success") {
       expect(result.value).toBeInstanceOf(AST.SourceFile);
@@ -49,7 +52,7 @@ describe("SourceFile Parser", () => {
   it("should parse source file with single statement", () => {
     const context = createParserContext("let x = 42;");
     const result = sourceFile("test.ts").parse(context);
-    
+
     expect(result.type).toBe("success");
     if (result.type === "success") {
       expect(result.value).toBeInstanceOf(AST.SourceFile);
@@ -67,7 +70,7 @@ describe("SourceFile Parser", () => {
       fun add(a: Int, b: Int): Int => a + b;
     `);
     const result = sourceFile("test.ts").parse(context);
-    
+
     expect(result.type).toBe("success");
     if (result.type === "success") {
       expect(result.value).toBeInstanceOf(AST.SourceFile);
@@ -90,7 +93,7 @@ describe("SourceFile Parser", () => {
     `;
     const context = createParserContext(source);
     const result = sourceFile("test.ts").parse(context);
-    
+
     assertSuccess(result, context, source);
     expect(result.value).toBeInstanceOf(AST.SourceFile);
     const file = result.value as AST.SourceFile;
@@ -108,7 +111,7 @@ describe("SourceFile Parser", () => {
       let x = foo();
     `);
     const result = sourceFile("test.ts").parse(context);
-    
+
     expect(result.type).toBe("success");
     if (result.type === "success") {
       expect(result.value).toBeInstanceOf(AST.SourceFile);
@@ -127,10 +130,10 @@ describe("SourceFile Parser", () => {
       data Option<T> = Some(T) | None;
       effect IO { read: (String) => String };
       interface Printable { toString: () => String };
-    `
+    `;
     const context = createParserContext(source);
     const result = sourceFile("test.ts").parse(context);
-    
+
     assertSuccess(result, context, source);
     expect(result.value).toBeInstanceOf(AST.SourceFile);
     const file = result.value as AST.SourceFile;
@@ -154,7 +157,7 @@ describe("SourceFile Parser", () => {
       }
     `);
     const result = sourceFile("test.ts").parse(context);
-    
+
     expect(result.type).toBe("success");
     if (result.type === "success") {
       expect(result.value).toBeInstanceOf(AST.SourceFile);
@@ -176,7 +179,7 @@ describe("SourceFile Parser", () => {
       
     `);
     const result = sourceFile("test.ts").parse(context);
-    
+
     expect(result.type).toBe("success");
     if (result.type === "success") {
       expect(result.value).toBeInstanceOf(AST.SourceFile);
@@ -190,7 +193,7 @@ describe("SourceFile Parser", () => {
   it("should preserve span information", () => {
     const context = createParserContext("let x = 42;");
     const result = sourceFile("test.ts").parse(context);
-    
+
     expect(result.type).toBe("success");
     if (result.type === "success") {
       expect(result.value).toBeInstanceOf(AST.SourceFile);
@@ -200,4 +203,4 @@ describe("SourceFile Parser", () => {
       expect(sourceFile.span.end).toBeDefined();
     }
   });
-}); 
+});

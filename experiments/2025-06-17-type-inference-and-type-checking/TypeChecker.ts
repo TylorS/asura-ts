@@ -485,7 +485,11 @@ export class TypeChecker {
           break;
         }
         case "Subtype": {
-          const success = this.isSubtype(constraint.left, constraint.right, constraint.variance);
+          const success = this.isSubtype(
+            constraint.left,
+            constraint.right,
+            constraint.variance,
+          );
           if (!success) {
             errors.push({
               message: `Type is not a subtype as required by constraint`,

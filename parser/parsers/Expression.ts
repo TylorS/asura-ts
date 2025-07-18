@@ -529,7 +529,10 @@ function postfixExpression(): Parser.Parser<AST.Expression> {
           Parser.symbol("."),
           Parser.token("Identifier"),
         ).pipe(
-          Parser.map(([_dot, property]) => ({ type: "property" as const, property }))
+          Parser.map(([_dot, property]) => ({
+            type: "property" as const,
+            property,
+          })),
         ),
         // Index access: [expr]
         Parser.seq(
@@ -537,7 +540,10 @@ function postfixExpression(): Parser.Parser<AST.Expression> {
           Parser.lazy(expression),
           Parser.symbol("]"),
         ).pipe(
-          Parser.map(([_open, index, _close]) => ({ type: "index" as const, index }))
+          Parser.map(([_open, index, _close]) => ({
+            type: "index" as const,
+            index,
+          })),
         ),
         // Call: (args)
         Parser.seq(
@@ -545,14 +551,17 @@ function postfixExpression(): Parser.Parser<AST.Expression> {
           Parser.optional(
             Parser.lazy(expression).pipe(
               Parser.separatedBy(Parser.symbol(",")),
-            )
+            ),
           ),
           Parser.symbol(")"),
         ).pipe(
-          Parser.map(([_open, args, _close]) => ({ type: "call" as const, args: args ?? [] }))
+          Parser.map(([_open, args, _close]) => ({
+            type: "call" as const,
+            args: args ?? [],
+          })),
         ),
-      )
-    )
+      ),
+    ),
   ).pipe(
     Parser.map(([base, postfixes]) => {
       return postfixes.reduce((object: AST.Expression, op) => {
@@ -560,25 +569,30 @@ function postfixExpression(): Parser.Parser<AST.Expression> {
           return new AST.PropertyAccess(
             object,
             new AST.Identifier(op.property.text, op.property.span),
-            new AST.Span(object.span.start, op.property.span.end)
+            new AST.Span(object.span.start, op.property.span.end),
           );
         } else if (op.type === "index") {
           return new AST.IndexAccess(
             object,
             op.index,
-            new AST.Span(object.span.start, op.index.span.end)
+            new AST.Span(object.span.start, op.index.span.end),
           );
         } else if (op.type === "call") {
           return new AST.CallExpression(
             object,
             op.args,
-            new AST.Span(object.span.start, (op.args.length > 0 ? op.args[op.args.length - 1].span.end : object.span.end))
+            new AST.Span(
+              object.span.start,
+              op.args.length > 0
+                ? op.args[op.args.length - 1].span.end
+                : object.span.end,
+            ),
           );
         } else {
           return object;
         }
       }, base);
-    })
+    }),
   );
 }
 

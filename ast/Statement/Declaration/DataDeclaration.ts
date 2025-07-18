@@ -10,7 +10,7 @@ export class VoidConstructor {
 
   constructor(
     readonly name: Identifier,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }
 

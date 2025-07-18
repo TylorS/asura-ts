@@ -16,7 +16,7 @@ import { CallExpression } from "./CallExpression.ts";
 import { Identifier } from "../Identifer.ts";
 import { UnaryExpression } from "./UnaryExpression.ts";
 import { PropertyAccess } from "./PropertyAccess.ts";
-import { IndexAccess } from "./IndexAccess.ts"; 
+import { IndexAccess } from "./IndexAccess.ts";
 
 export type Literal =
   | ArrayLiteral

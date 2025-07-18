@@ -27,7 +27,7 @@ export class WasmCompiler {
   async compile(
     watContent: string,
     witContent?: string,
-    options: WasmCompilationOptions = {}
+    options: WasmCompilationOptions = {},
   ): Promise<WasmCompilationResult> {
     const result: WasmCompilationResult = {
       success: false,
@@ -43,7 +43,9 @@ export class WasmCompiler {
       // Generate unique filenames
       const timestamp = Date.now();
       const watPath = this.join(outputDir, `module-${timestamp}.wat`);
-      const witPath = witContent ? this.join(outputDir, `module-${timestamp}.wit`) : undefined;
+      const witPath = witContent
+        ? this.join(outputDir, `module-${timestamp}.wit`)
+        : undefined;
       const wasmPath = this.join(outputDir, `module-${timestamp}.wasm`);
 
       // Write WAT file
@@ -53,7 +55,9 @@ export class WasmCompiler {
       // Validate WAT file
       const watValidation = await this.validateWat(watPath);
       if (!watValidation.valid) {
-        result.errors.push(...watValidation.errors.map(e => `WAT validation error: ${e}`));
+        result.errors.push(
+          ...watValidation.errors.map((e) => `WAT validation error: ${e}`),
+        );
         return result;
       }
 
@@ -70,16 +74,22 @@ export class WasmCompiler {
       }
 
       // Compile WAT to WASM
-      const compileResult = await this.compileWatToWasm(watPath, wasmPath, options);
-      
+      const compileResult = await this.compileWatToWasm(
+        watPath,
+        wasmPath,
+        options,
+      );
+
       if (compileResult.success) {
         result.success = true;
         result.wasmPath = wasmPath;
-        
+
         // Validate WASM file
         const wasmValidation = await this.validateWasm(wasmPath);
         if (!wasmValidation.valid) {
-          result.errors.push(...wasmValidation.errors.map(e => `WASM validation error: ${e}`));
+          result.errors.push(
+            ...wasmValidation.errors.map((e) => `WASM validation error: ${e}`),
+          );
           result.success = false;
         }
 
@@ -94,7 +104,6 @@ export class WasmCompiler {
       } else {
         result.errors.push(...compileResult.errors);
       }
-
     } catch (error) {
       const err = error as Error;
       result.errors.push(`Compilation failed: ${err.message}`);
@@ -121,7 +130,7 @@ export class WasmCompiler {
   private async compileWatToWasm(
     watPath: string,
     wasmPath: string,
-    options: WasmCompilationOptions
+    options: WasmCompilationOptions,
   ): Promise<{ success: boolean; errors: string[] }> {
     const args = ["wat2wasm", watPath, "-o", wasmPath];
 
@@ -145,7 +154,7 @@ export class WasmCompiler {
       const { success, stdout, stderr } = await command.output();
 
       const errors: string[] = [];
-      
+
       if (!success) {
         const stderrText = new TextDecoder().decode(stderr);
         errors.push(`wasm-tools compilation failed: ${stderrText}`);
@@ -155,9 +164,9 @@ export class WasmCompiler {
       const stdoutText = new TextDecoder().decode(stdout);
       if (stdoutText.trim()) {
         // Parse warnings from stdout
-        const lines = stdoutText.split('\n').filter(line => line.trim());
+        const lines = stdoutText.split("\n").filter((line) => line.trim());
         for (const line of lines) {
-          if (line.includes('warning') || line.includes('Warning')) {
+          if (line.includes("warning") || line.includes("Warning")) {
             errors.push(`Warning: ${line}`);
           }
         }
@@ -173,7 +182,9 @@ export class WasmCompiler {
     }
   }
 
-  async validateWasm(wasmPath: string): Promise<{ valid: boolean; errors: string[] }> {
+  async validateWasm(
+    wasmPath: string,
+  ): Promise<{ valid: boolean; errors: string[] }> {
     const args = ["validate", wasmPath];
 
     try {
@@ -226,7 +237,7 @@ export class WasmCompiler {
       }
 
       const output = new TextDecoder().decode(stdout);
-      
+
       // Parse the dump output
       const info = {
         functions: 0,
@@ -239,24 +250,24 @@ export class WasmCompiler {
       };
 
       // Simple parsing of wasm-tools dump output
-      const lines = output.split('\n');
+      const lines = output.split("\n");
       for (const line of lines) {
-        if (line.includes('functions:')) {
+        if (line.includes("functions:")) {
           const match = line.match(/(\d+)/);
           if (match) info.functions = parseInt(match[1]);
-        } else if (line.includes('globals:')) {
+        } else if (line.includes("globals:")) {
           const match = line.match(/(\d+)/);
           if (match) info.globals = parseInt(match[1]);
-        } else if (line.includes('memories:')) {
+        } else if (line.includes("memories:")) {
           const match = line.match(/(\d+)/);
           if (match) info.memories = parseInt(match[1]);
-        } else if (line.includes('tables:')) {
+        } else if (line.includes("tables:")) {
           const match = line.match(/(\d+)/);
           if (match) info.tables = parseInt(match[1]);
-        } else if (line.includes('imports:')) {
+        } else if (line.includes("imports:")) {
           const match = line.match(/(\d+)/);
           if (match) info.imports = parseInt(match[1]);
-        } else if (line.includes('exports:')) {
+        } else if (line.includes("exports:")) {
           const match = line.match(/(\d+)/);
           if (match) info.exports = parseInt(match[1]);
         }
@@ -277,7 +288,9 @@ export class WasmCompiler {
     }
   }
 
-  async checkWasmTools(): Promise<{ available: boolean; version?: string; error?: string }> {
+  async checkWasmTools(): Promise<
+    { available: boolean; version?: string; error?: string }
+  > {
     try {
       const command = new Deno.Command(this.wasmToolsPath, {
         args: ["--version"],
@@ -299,7 +312,9 @@ export class WasmCompiler {
     }
   }
 
-  async validateWat(watPath: string): Promise<{ valid: boolean; errors: string[] }> {
+  async validateWat(
+    watPath: string,
+  ): Promise<{ valid: boolean; errors: string[] }> {
     const args = ["parse", watPath];
     try {
       const command = new Deno.Command(this.wasmToolsPath, {
@@ -316,11 +331,16 @@ export class WasmCompiler {
       }
     } catch (error) {
       const err = error as Error;
-      return { valid: false, errors: [`WAT validation failed: ${err.message}`] };
+      return {
+        valid: false,
+        errors: [`WAT validation failed: ${err.message}`],
+      };
     }
   }
 
-  async validateWit(witPath: string): Promise<{ valid: boolean; errors: string[] }> {
+  async validateWit(
+    witPath: string,
+  ): Promise<{ valid: boolean; errors: string[] }> {
     const args = ["component", "wit", witPath];
     try {
       const command = new Deno.Command(this.wasmToolsPath, {
@@ -337,7 +357,10 @@ export class WasmCompiler {
       }
     } catch (error) {
       const err = error as Error;
-      return { valid: false, errors: [`WIT validation failed: ${err.message}`] };
+      return {
+        valid: false,
+        errors: [`WIT validation failed: ${err.message}`],
+      };
     }
   }
-} 
+}

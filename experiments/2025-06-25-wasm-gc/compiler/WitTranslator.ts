@@ -1,7 +1,22 @@
-import { IRModule, IRFunction } from "./CodeGenerator.ts";
+import { IRFunction, IRModule } from "./CodeGenerator.ts";
 import { WitGenerator } from "../wit/WitGenerator.ts";
-import { WitPackage, WitInterface, WitFunction, WitParameter, WitResult, WitType, WitTypeKind } from "../wit/types.ts";
-import { Type, ApplicationType, ForallType, FunctionType, RecordType, VariantType } from "../../2025-06-17-type-inference-and-type-checking/Type.ts";
+import {
+  WitFunction,
+  WitInterface,
+  WitPackage,
+  WitParameter,
+  WitResult,
+  WitType,
+  WitTypeKind,
+} from "../wit/types.ts";
+import {
+  ApplicationType,
+  ForallType,
+  FunctionType,
+  RecordType,
+  Type,
+  VariantType,
+} from "../../2025-06-17-type-inference-and-type-checking/Type.ts";
 
 export interface WitTranslationOptions {
   packageName?: string;
@@ -36,7 +51,9 @@ export class WitTranslator {
   }
 
   private createInterface(name: string, functions: IRFunction[]): WitInterface {
-    const witFunctions: WitFunction[] = functions.map(func => this.translateFunction(func));
+    const witFunctions: WitFunction[] = functions.map((func) =>
+      this.translateFunction(func)
+    );
     const types: WitType[] = [];
 
     return {
@@ -47,7 +64,7 @@ export class WitTranslator {
   }
 
   private translateFunction(irFunc: IRFunction): WitFunction {
-    const params: WitParameter[] = irFunc.params.map(param => ({
+    const params: WitParameter[] = irFunc.params.map((param) => ({
       name: param.name,
       type: this.typeToWitType(param.type),
     }));
@@ -116,7 +133,9 @@ export class WitTranslator {
   }
 
   private functionTypeToWit(type: FunctionType): string {
-    const params = type.parameters.map((p, i) => `param${i}: ${this.typeToWitType(p)}`).join(", ");
+    const params = type.parameters.map((p, i) =>
+      `param${i}: ${this.typeToWitType(p)}`
+    ).join(", ");
     const returnType = this.typeToWitType(type.returnType);
     return `(${params}) -> ${returnType}`;
   }
@@ -142,12 +161,14 @@ export class WitTranslator {
 
   private applicationTypeToWit(type: ApplicationType): string {
     const constructorName = this.getTypeConstructorName(type.constructor);
-    const args = type.arguments.map(arg => this.typeToWitType(arg)).join(", ");
+    const args = type.arguments.map((arg) => this.typeToWitType(arg)).join(
+      ", ",
+    );
     return `${constructorName}<${args}>`;
   }
 
   private forallTypeToWit(type: ForallType): string {
-    const vars = type.variables.map(v => v.name).join(", ");
+    const vars = type.variables.map((v) => v.name).join(", ");
     const body = this.typeToWitType(type.body);
     return `forall<${vars}> ${body}`;
   }
@@ -178,7 +199,9 @@ export class WitTranslator {
       case "RecordType":
         return {
           kind: "record",
-          fields: Array.from(type.row.fields.entries()).map(([name, fieldType]) => ({
+          fields: Array.from(type.row.fields.entries()).map((
+            [name, fieldType],
+          ) => ({
             name,
             type: this.typeToWitType(fieldType),
           })),
@@ -187,10 +210,12 @@ export class WitTranslator {
       case "VariantType":
         return {
           kind: "variant",
-          cases: Array.from(type.row.fields.entries()).map(([name, caseType]) => ({
+          cases: Array.from(type.row.fields.entries()).map((
+            [name, caseType],
+          ) => ({
             name,
-            type: caseType.kind === "PrimitiveType" && caseType.name === "unit" 
-              ? undefined 
+            type: caseType.kind === "PrimitiveType" && caseType.name === "unit"
+              ? undefined
               : this.typeToWitType(caseType),
           })),
         };
@@ -220,7 +245,7 @@ export class WitTranslator {
         // Default to union for other type applications
         return {
           kind: "union",
-          types: type.arguments.map(arg => this.typeToWitType(arg)),
+          types: type.arguments.map((arg) => this.typeToWitType(arg)),
         };
       }
 
@@ -268,7 +293,22 @@ export class WitTranslator {
     }
   }
 
-  private primitiveTypeToWitPrimitive(name: string): "u8" | "u16" | "u32" | "u64" | "s8" | "s16" | "s32" | "s64" | "float32" | "float64" | "char" | "bool" | "string" {
+  private primitiveTypeToWitPrimitive(
+    name: string,
+  ):
+    | "u8"
+    | "u16"
+    | "u32"
+    | "u64"
+    | "s8"
+    | "s16"
+    | "s32"
+    | "s64"
+    | "float32"
+    | "float64"
+    | "char"
+    | "bool"
+    | "string" {
     switch (name) {
       case "number":
         return "float64";
@@ -282,4 +322,4 @@ export class WitTranslator {
         return "u32";
     }
   }
-} 
+}

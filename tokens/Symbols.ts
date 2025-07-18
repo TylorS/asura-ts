@@ -76,7 +76,6 @@ export const SYMBOLS = {
   MultiLineCommentStart: "/*",
   MultiLineCommentEnd: "*/",
 
-
   // Whitespace
   Space: " ",
   Tab: "\t",

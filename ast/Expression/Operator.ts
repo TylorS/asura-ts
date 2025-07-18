@@ -1,6 +1,6 @@
 import { Span } from "../../tokens/Span.ts";
 
-export type Operator = 
+export type Operator =
   | "+"
   | "-"
   | "*"

@@ -4,5 +4,8 @@ import { TypeReference } from "./TypeReference.ts";
 // TODO: Support polymorphic effects
 export class EffectRecordSignature {
   readonly kind = "EffectRecordSignature";
-  constructor(public readonly references: TypeReference[], public readonly span: Span) {}
+  constructor(
+    public readonly references: TypeReference[],
+    public readonly span: Span,
+  ) {}
 }

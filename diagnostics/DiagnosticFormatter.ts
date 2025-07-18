@@ -18,26 +18,32 @@ export class DiagnosticFormatter {
   private sourceLines: Map<string, string[]> = new Map();
 
   setSource(fileName: string, source: string): void {
-    this.sourceLines.set(fileName, source.split('\n'));
+    this.sourceLines.set(fileName, source.split("\n"));
   }
 
   format(diagnostic: Diagnostic, options: FormatOptions = {}): string {
     const opts = { ...DEFAULT_OPTIONS, ...options };
-    let output = '';
+    let output = "";
 
     // Header with severity, code, and message
     const severitySymbol = this.getSeveritySymbol(diagnostic.severity);
     const severityText = diagnostic.severity.toUpperCase();
-    
-    output += `${severitySymbol} ${severityText}[${diagnostic.code}]: ${diagnostic.message}\n`;
-    
+
+    output +=
+      `${severitySymbol} ${severityText}[${diagnostic.code}]: ${diagnostic.message}\n`;
+
     // Location information
     const location = diagnostic.span.start;
-    output += `  --> ${diagnostic.fileName}:${location.line + 1}:${location.column + 1}\n`;
+    output += `  --> ${diagnostic.fileName}:${location.line + 1}:${
+      location.column + 1
+    }\n`;
 
     // Source code context
     if (opts.showSourceCode) {
-      const sourceContext = this.getSourceContext(diagnostic, opts.maxContextLines!);
+      const sourceContext = this.getSourceContext(
+        diagnostic,
+        opts.maxContextLines!,
+      );
       if (sourceContext) {
         output += sourceContext;
       }
@@ -45,7 +51,7 @@ export class DiagnosticFormatter {
 
     // Fix suggestions
     if (opts.showFixes && diagnostic.fixes.length > 0) {
-      output += '\n';
+      output += "\n";
       for (const fix of diagnostic.fixes) {
         output += `  help: ${fix.message}\n`;
         if (opts.showSourceCode) {
@@ -56,37 +62,45 @@ export class DiagnosticFormatter {
 
     // Related information
     if (diagnostic.relatedInformation.length > 0) {
-      output += '\n';
+      output += "\n";
       for (const info of diagnostic.relatedInformation) {
         const infoLocation = info.span.start;
         output += `  note: ${info.message}\n`;
-        output += `        --> ${info.fileName}:${infoLocation.line + 1}:${infoLocation.column + 1}\n`;
+        output += `        --> ${info.fileName}:${infoLocation.line + 1}:${
+          infoLocation.column + 1
+        }\n`;
       }
     }
 
     return output;
   }
 
-  formatMany(diagnostics: ReadonlyArray<Diagnostic>, options: FormatOptions = {}): string {
-    return diagnostics.map(d => this.format(d, options)).join('\n\n');
+  formatMany(
+    diagnostics: ReadonlyArray<Diagnostic>,
+    options: FormatOptions = {},
+  ): string {
+    return diagnostics.map((d) => this.format(d, options)).join("\n\n");
   }
 
   private getSeveritySymbol(severity: DiagnosticSeverity): string {
     switch (severity) {
       case DiagnosticSeverity.ERROR:
-        return '✗';
+        return "✗";
       case DiagnosticSeverity.WARNING:
-        return '⚠';
+        return "⚠";
       case DiagnosticSeverity.INFO:
-        return 'ℹ';
+        return "ℹ";
       case DiagnosticSeverity.HINT:
-        return '💡';
+        return "💡";
       default:
-        return '•';
+        return "•";
     }
   }
 
-  private getSourceContext(diagnostic: Diagnostic, maxLines: number): string | null {
+  private getSourceContext(
+    diagnostic: Diagnostic,
+    maxLines: number,
+  ): string | null {
     const sourceLines = this.sourceLines.get(diagnostic.fileName);
     if (!sourceLines) {
       return null;
@@ -94,28 +108,33 @@ export class DiagnosticFormatter {
 
     const startLine = diagnostic.span.start.line;
     const endLine = diagnostic.span.end.line;
-    
-    const contextStart = Math.max(0, startLine - Math.floor(maxLines / 2));
-    const contextEnd = Math.min(sourceLines.length - 1, endLine + Math.floor(maxLines / 2));
 
-    let output = '';
+    const contextStart = Math.max(0, startLine - Math.floor(maxLines / 2));
+    const contextEnd = Math.min(
+      sourceLines.length - 1,
+      endLine + Math.floor(maxLines / 2),
+    );
+
+    let output = "";
     const lineNumberWidth = String(contextEnd + 1).length;
 
     for (let i = contextStart; i <= contextEnd; i++) {
-      const lineNum = String(i + 1).padStart(lineNumberWidth, ' ');
+      const lineNum = String(i + 1).padStart(lineNumberWidth, " ");
       const isErrorLine = i >= startLine && i <= endLine;
-      const prefix = isErrorLine ? ' >' : '  ';
-      
+      const prefix = isErrorLine ? " >" : "  ";
+
       output += `${prefix} ${lineNum} | ${sourceLines[i]}\n`;
-      
+
       // Add underline for error spans
       if (isErrorLine) {
         const startCol = i === startLine ? diagnostic.span.start.column : 0;
-        const endCol = i === endLine ? diagnostic.span.end.column : sourceLines[i].length;
-        
-        const spaces = ' '.repeat(lineNumberWidth + 3 + startCol);
-        const underline = '^'.repeat(Math.max(1, endCol - startCol));
-        
+        const endCol = i === endLine
+          ? diagnostic.span.end.column
+          : sourceLines[i].length;
+
+        const spaces = " ".repeat(lineNumberWidth + 3 + startCol);
+        const underline = "^".repeat(Math.max(1, endCol - startCol));
+
         output += `   ${spaces}${underline}\n`;
       }
     }
@@ -128,7 +147,7 @@ export class DiagnosticFormatter {
 export function formatDiagnostic(
   diagnostic: Diagnostic,
   source?: string,
-  options?: FormatOptions
+  options?: FormatOptions,
 ): string {
   const formatter = new DiagnosticFormatter();
   if (source) {
@@ -140,11 +159,11 @@ export function formatDiagnostic(
 export function formatDiagnostics(
   diagnostics: ReadonlyArray<Diagnostic>,
   source?: string,
-  options?: FormatOptions
+  options?: FormatOptions,
 ): string {
   const formatter = new DiagnosticFormatter();
   if (source && diagnostics.length > 0) {
     formatter.setSource(diagnostics[0].fileName, source);
   }
   return formatter.formatMany(diagnostics, options);
-} 
+}

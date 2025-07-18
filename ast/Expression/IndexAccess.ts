@@ -3,7 +3,7 @@ import { Span } from "../../tokens/Span.ts";
 
 export class IndexAccess {
   readonly kind = "IndexAccess";
-  
+
   constructor(
     public readonly object: Expression,
     public readonly index: Expression,
@@ -13,4 +13,4 @@ export class IndexAccess {
   toString(): string {
     return `${this.object.toString()}[${this.index.toString()}]`;
   }
-} 
+}

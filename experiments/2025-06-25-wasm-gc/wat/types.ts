@@ -66,4 +66,4 @@ export type WatType = "i32" | "i64" | "f32" | "f64";
 export interface WatInstruction {
   opcode: string;
   operands?: (string | number)[];
-} 
+}

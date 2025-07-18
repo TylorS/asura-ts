@@ -1,5 +1,11 @@
-import { IRModule, IRFunction, IROperation } from "./CodeGenerator.ts";
-import { WatModule, WatFunction, WatParam, WatLocal, WatInstruction } from "../wat/types.ts";
+import { IRFunction, IRModule, IROperation } from "./CodeGenerator.ts";
+import {
+  WatFunction,
+  WatInstruction,
+  WatLocal,
+  WatModule,
+  WatParam,
+} from "../wat/types.ts";
 import { Type } from "../../2025-06-17-type-inference-and-type-checking/Type.ts";
 
 export interface WasmTranslationOptions {
@@ -69,7 +75,7 @@ export class WasmTranslator {
         name: irGlobal.name,
         type: this.typeToWatType(irGlobal.type),
         mutable: irGlobal.mutable,
-        init: irGlobal.init.map(op => this.translateOperation(op)),
+        init: irGlobal.init.map((op) => this.translateOperation(op)),
       });
     }
 
@@ -77,17 +83,19 @@ export class WasmTranslator {
   }
 
   private translateFunction(irFunc: IRFunction): WatFunction {
-    const params: WatParam[] = irFunc.params.map(param => ({
+    const params: WatParam[] = irFunc.params.map((param) => ({
       name: param.name,
       type: this.typeToWatType(param.type),
     }));
 
-    const locals: WatLocal[] = irFunc.locals.map(local => ({
+    const locals: WatLocal[] = irFunc.locals.map((local) => ({
       name: local.name,
       type: this.typeToWatType(local.type),
     }));
 
-    const body: WatInstruction[] = irFunc.body.map(op => this.translateOperation(op));
+    const body: WatInstruction[] = irFunc.body.map((op) =>
+      this.translateOperation(op)
+    );
 
     return {
       name: irFunc.name,
@@ -101,16 +109,28 @@ export class WasmTranslator {
   private translateOperation(operation: IROperation): WatInstruction {
     switch (operation.kind) {
       case "i32.const":
-        return { opcode: "i32.const", operands: operation.operands as number[] };
+        return {
+          opcode: "i32.const",
+          operands: operation.operands as number[],
+        };
 
       case "f64.const":
-        return { opcode: "f64.const", operands: operation.operands as number[] };
+        return {
+          opcode: "f64.const",
+          operands: operation.operands as number[],
+        };
 
       case "local.get":
-        return { opcode: "local.get", operands: operation.operands as string[] };
+        return {
+          opcode: "local.get",
+          operands: operation.operands as string[],
+        };
 
       case "local.set":
-        return { opcode: "local.set", operands: operation.operands as string[] };
+        return {
+          opcode: "local.set",
+          operands: operation.operands as string[],
+        };
 
       case "call":
         return { opcode: "call", operands: [] };
@@ -143,19 +163,31 @@ export class WasmTranslator {
         return { opcode: "memory.grow", operands: [0] };
 
       case "memory.store":
-        return { opcode: "i32.store", operands: operation.operands as number[] };
+        return {
+          opcode: "i32.store",
+          operands: operation.operands as number[],
+        };
 
       case "memory.load":
         return { opcode: "i32.load", operands: operation.operands as number[] };
 
       case "field.get":
-        return { opcode: "struct.get", operands: operation.operands as string[] };
+        return {
+          opcode: "struct.get",
+          operands: operation.operands as string[],
+        };
 
       case "field.set":
-        return { opcode: "struct.set", operands: operation.operands as string[] };
+        return {
+          opcode: "struct.set",
+          operands: operation.operands as string[],
+        };
 
       case "variant.create":
-        return { opcode: "variant.new", operands: operation.operands as string[] };
+        return {
+          opcode: "variant.new",
+          operands: operation.operands as string[],
+        };
 
       case "match.case":
         return { opcode: "block", operands: operation.operands as string[] };
@@ -247,7 +279,9 @@ export class WasmTranslator {
         return `(param ${this.typeToWatType(type)})`;
 
       case "FunctionType": {
-        const params = type.parameters.map(p => this.typeToWatType(p)).join(" ");
+        const params = type.parameters.map((p) => this.typeToWatType(p)).join(
+          " ",
+        );
         const returnType = this.typeToWatType(type.returnType);
         return `(func (param ${params}) (result ${returnType}))`;
       }
@@ -280,4 +314,4 @@ export class WasmTranslator {
         return `(param ${this.typeToWatType(type)})`;
     }
   }
-} 
+}

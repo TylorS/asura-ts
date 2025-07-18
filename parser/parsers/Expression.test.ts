@@ -4,10 +4,7 @@ import { formatDiagnostics } from "../../diagnostics/DiagnosticFormatter.ts";
 import { DiagnosticCollection } from "../../diagnostics/mod.ts";
 import { tokenizeToArray } from "../../tokens/Tokenizer.ts";
 import { ParserContext, ParseResult, ParseSuccess } from "../Parser.ts";
-import {
-  expression,
-  returnExpressionOrBlock
-} from "./Expression.ts";
+import { expression, returnExpressionOrBlock } from "./Expression.ts";
 
 function createParserContext(source: string): ParserContext {
   const tokens = tokenizeToArray(source);
@@ -328,7 +325,7 @@ describe("Expression Parser", () => {
       expect(binary.operator.text).toBe("=");
       expect(binary.left).toBeInstanceOf(AST.Identifier);
       expect(binary.right).toBeInstanceOf(AST.BinaryExpression);
-      
+
       const rightBinary = binary.right as AST.BinaryExpression;
       expect(rightBinary.operator.text).toBe("=");
     });
@@ -336,14 +333,14 @@ describe("Expression Parser", () => {
     it("should respect assignment operator precedence", () => {
       const source = "x = 1 + 2 * 3";
       const context = createParserContext(source);
-        const result = expression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BinaryExpression);
       const binary = result.value as AST.BinaryExpression;
       expect(binary.operator.text).toBe("=");
       expect(binary.right).toBeInstanceOf(AST.BinaryExpression);
-      
+
       const rightBinary = binary.right as AST.BinaryExpression;
       expect(rightBinary.operator.text).toBe("+");
     });
@@ -470,7 +467,7 @@ describe("Expression Parser", () => {
       const binary = result.value as AST.BinaryExpression;
       expect(binary.operator.text).toBe("+");
       expect(binary.left).toBeInstanceOf(AST.CallExpression);
-      
+
       const call = binary.left as AST.CallExpression;
       expect(call.callee).toBeInstanceOf(AST.Identifier);
       expect((call.callee as AST.Identifier).text).toBe("add");

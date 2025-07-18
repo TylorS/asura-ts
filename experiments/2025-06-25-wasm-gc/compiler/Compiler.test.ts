@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Compiler } from "./Compiler.ts";
 import { ExpressionBuilder } from "../../2025-06-17-type-inference-and-type-checking/ExpressionHelpers.ts";
 
@@ -7,13 +7,13 @@ describe("Compiler", () => {
 
   it("should compile a simple number literal", async () => {
     const expression = ExpressionBuilder.num(42);
-    
+
     const result = await compiler.compile(expression, {
       moduleName: "test-module",
       packageName: "test-package",
     });
 
-    expect(result.errors).toEqual([])
+    expect(result.errors).toEqual([]);
     expect(result.wat).toMatchInlineSnapshot(`
       "(module
         (name "test-module")
@@ -26,7 +26,7 @@ describe("Compiler", () => {
         )
         (export "main" (func 0))
       )"
-    `)
+    `);
     expect(result.wit).toMatchInlineSnapshot(`
       "package test-package;
 
@@ -39,13 +39,13 @@ describe("Compiler", () => {
           main,
         };
       }"
-    `)
+    `);
   });
 
   it("should compile a simple function application", async () => {
     const expression = ExpressionBuilder.app(
       ExpressionBuilder.lambda("x", ExpressionBuilder.var("x")),
-      ExpressionBuilder.num(42)
+      ExpressionBuilder.num(42),
     );
 
     const result = await compiler.compile(expression, {
@@ -53,7 +53,7 @@ describe("Compiler", () => {
       packageName: "func-package",
     });
 
-    expect(result.errors).toEqual([])
+    expect(result.errors).toEqual([]);
     expect(result.wat).toMatchInlineSnapshot(`
       "(module
         (name "func-module")
@@ -70,7 +70,7 @@ describe("Compiler", () => {
         )
         (export "main" (func 0))
       )"
-    `)
+    `);
     expect(result.wit).toMatchInlineSnapshot(`
       "package func-package;
 
@@ -83,7 +83,7 @@ describe("Compiler", () => {
           main,
         };
       }"
-    `)
+    `);
   });
 
   it("should compile a record", async () => {
@@ -97,7 +97,7 @@ describe("Compiler", () => {
       packageName: "record-package",
     });
 
-    expect(result.errors).toEqual([])
+    expect(result.errors).toEqual([]);
     expect(result.wat).toMatchInlineSnapshot(`
       "(module
         (name "record-module")
@@ -114,7 +114,7 @@ describe("Compiler", () => {
         )
         (export "main" (func 0))
       )"
-    `)
+    `);
     expect(result.wit).toMatchInlineSnapshot(`
       "package record-package;
 
@@ -127,7 +127,7 @@ describe("Compiler", () => {
           main,
         };
       }"
-    `)
+    `);
   });
 
   it("should compile a let binding", async () => {
@@ -136,8 +136,8 @@ describe("Compiler", () => {
       ExpressionBuilder.num(10),
       ExpressionBuilder.app(
         ExpressionBuilder.lambda("y", ExpressionBuilder.var("y")),
-        ExpressionBuilder.var("x")
-      )
+        ExpressionBuilder.var("x"),
+      ),
     );
 
     const result = await compiler.compile(expression, {
@@ -145,7 +145,7 @@ describe("Compiler", () => {
       packageName: "let-package",
     });
 
-    expect(result.errors).toEqual([])
+    expect(result.errors).toEqual([]);
     expect(result.wat).toMatchInlineSnapshot(`
       "(module
         (name "let-module")
@@ -167,7 +167,7 @@ describe("Compiler", () => {
         )
         (export "main" (func 0))
       )"
-    `)
+    `);
     expect(result.wit).toMatchInlineSnapshot(`
       "package let-package;
 
@@ -180,14 +180,14 @@ describe("Compiler", () => {
           main,
         };
       }"
-    `)
+    `);
   });
 
   it("should handle compilation errors gracefully", async () => {
     // Create an expression that might cause type inference issues
     const expression = ExpressionBuilder.app(
       ExpressionBuilder.num(42), // This should fail - can't apply a number
-      ExpressionBuilder.num(10)
+      ExpressionBuilder.num(10),
     );
 
     const result = await compiler.compile(expression, {
@@ -196,7 +196,7 @@ describe("Compiler", () => {
     });
 
     // Should have errors but not crash
-    expect(result.errors).toMatchInlineSnapshot(`[]`)
+    expect(result.errors).toMatchInlineSnapshot(`[]`);
     expect(result.wat).toMatchInlineSnapshot(`
       "(module
         (name "error-module")
@@ -211,7 +211,7 @@ describe("Compiler", () => {
         )
         (export "main" (func 0))
       )"
-    `)
+    `);
     expect(result.wit).toMatchInlineSnapshot(`
       "package error-package;
 
@@ -224,7 +224,7 @@ describe("Compiler", () => {
           main,
         };
       }"
-    `)
+    `);
   });
 
   it("should compile multiple expressions as a module", async () => {
@@ -239,7 +239,7 @@ describe("Compiler", () => {
       packageName: "multi-package",
     });
 
-    expect(result.errors).toEqual([])
+    expect(result.errors).toEqual([]);
     expect(result.wat).toMatchInlineSnapshot(`
       "(module
         (name "multi-module")
@@ -252,7 +252,7 @@ describe("Compiler", () => {
         )
         (export "main" (func 0))
       )"
-    `)
+    `);
     expect(result.wit).toMatchInlineSnapshot(`
       "package multi-package;
 
@@ -265,7 +265,7 @@ describe("Compiler", () => {
           main,
         };
       }"
-    `)
+    `);
   });
 
   it("should respect compilation options", async () => {
@@ -298,7 +298,7 @@ describe("Compiler", () => {
 
   it("should check wasm-tools availability", async () => {
     const result = await compiler.checkWasmTools();
-    
+
     expect(typeof result.available).toBe("boolean");
     if (result.available) {
       expect(typeof result.version).toBe("string");
@@ -309,7 +309,7 @@ describe("Compiler", () => {
 
   it("should compile with WASM generation when available", async () => {
     const expression = ExpressionBuilder.num(42);
-    
+
     const result = await compiler.compile(expression, {
       moduleName: "wasm-test",
       packageName: "wasm-test",
@@ -319,7 +319,7 @@ describe("Compiler", () => {
 
     expect(result.wat).not.toBe("");
     expect(result.wit).not.toBe("");
-    
+
     // WASM result depends on wasm-tools availability
     if (result.wasm) {
       expect(typeof result.wasm.success).toBe("boolean");
@@ -331,4 +331,4 @@ describe("Compiler", () => {
       }
     }
   });
-}); 
+});

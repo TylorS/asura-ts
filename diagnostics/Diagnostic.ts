@@ -2,7 +2,7 @@ import { Span } from "../tokens/Span.ts";
 
 export enum DiagnosticSeverity {
   ERROR = "error",
-  WARNING = "warning", 
+  WARNING = "warning",
   INFO = "info",
   HINT = "hint",
 }
@@ -10,17 +10,17 @@ export enum DiagnosticSeverity {
 export enum DiagnosticCode {
   // Parse errors
   UNEXPECTED_TOKEN = "P001",
-  EXPECTED_TOKEN = "P002", 
+  EXPECTED_TOKEN = "P002",
   MISSING_SEMICOLON = "P003",
   UNCLOSED_DELIMITER = "P004",
   INVALID_SYNTAX = "P005",
   PREMATURE_EOF = "P006",
-  
+
   // Recovery errors
   SKIPPED_TOKENS = "P100",
   INSERTED_TOKEN = "P101",
   RECOVERED_AT = "P102",
-  
+
   // Semantic errors (for future)
   UNDEFINED_IDENTIFIER = "S001",
   TYPE_MISMATCH = "S002",
@@ -42,7 +42,8 @@ export class Diagnostic {
     readonly span: Span,
     readonly fileName: string,
     readonly fixes: ReadonlyArray<DiagnosticFix> = [],
-    readonly relatedInformation: ReadonlyArray<DiagnosticRelatedInformation> = []
+    readonly relatedInformation: ReadonlyArray<DiagnosticRelatedInformation> =
+      [],
   ) {}
 
   isError(): boolean {
@@ -53,7 +54,12 @@ export class Diagnostic {
     return this.severity === DiagnosticSeverity.WARNING;
   }
 
-  withFix(message: string, replacement: string, kind: DiagnosticFix["kind"] = "insert", span?: Span): Diagnostic {
+  withFix(
+    message: string,
+    replacement: string,
+    kind: DiagnosticFix["kind"] = "insert",
+    span?: Span,
+  ): Diagnostic {
     const fixSpan = span ?? this.span;
     const fix: DiagnosticFix = { kind, message, span: fixSpan, replacement };
     return new Diagnostic(
@@ -63,7 +69,7 @@ export class Diagnostic {
       this.span,
       this.fileName,
       [...this.fixes, fix],
-      this.relatedInformation
+      this.relatedInformation,
     );
   }
 
@@ -76,7 +82,7 @@ export class Diagnostic {
       this.span,
       this.fileName,
       this.fixes,
-      [...this.relatedInformation, info]
+      [...this.relatedInformation, info],
     );
   }
 }
@@ -96,16 +102,16 @@ export class DiagnosticCollection {
 
   addError(
     code: DiagnosticCode,
-    message: string, 
+    message: string,
     span: Span,
-    fileName: string
+    fileName: string,
   ): Diagnostic {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.ERROR,
       code,
       message,
       span,
-      fileName
+      fileName,
     );
     this.add(diagnostic);
     return diagnostic;
@@ -114,15 +120,15 @@ export class DiagnosticCollection {
   addWarning(
     code: DiagnosticCode,
     message: string,
-    span: Span, 
-    fileName: string
+    span: Span,
+    fileName: string,
   ): Diagnostic {
     const diagnostic = new Diagnostic(
       DiagnosticSeverity.WARNING,
       code,
       message,
       span,
-      fileName
+      fileName,
     );
     this.add(diagnostic);
     return diagnostic;
@@ -133,15 +139,15 @@ export class DiagnosticCollection {
   }
 
   getErrors(): ReadonlyArray<Diagnostic> {
-    return this.diagnostics.filter(d => d.isError());
+    return this.diagnostics.filter((d) => d.isError());
   }
 
   getWarnings(): ReadonlyArray<Diagnostic> {
-    return this.diagnostics.filter(d => d.isWarning());
+    return this.diagnostics.filter((d) => d.isWarning());
   }
 
   hasErrors(): boolean {
-    return this.diagnostics.some(d => d.isError());
+    return this.diagnostics.some((d) => d.isError());
   }
 
   clear(): void {

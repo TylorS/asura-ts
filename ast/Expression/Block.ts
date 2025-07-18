@@ -8,5 +8,5 @@ export class Block<T = never> {
   constructor(
     readonly statements: ReadonlyArray<Statement | ReturnStatement | T>,
     readonly span: Span,
-  ) { }
+  ) {}
 }

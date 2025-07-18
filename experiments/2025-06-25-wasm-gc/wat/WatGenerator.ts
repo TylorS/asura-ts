@@ -9,46 +9,46 @@ export class WatGenerator {
   generate(): string {
     this.lines = [];
     this.indentLevel = 0;
-    
+
     this.writeModule();
-    
+
     return this.lines.join("\n");
   }
 
   private writeModule(): void {
     this.writeLine("(module");
     this.indent();
-    
+
     // Write imports
     for (const imp of this.module.imports) {
       this.writeImport(imp);
     }
-    
+
     // Write memories
     for (const memory of this.module.memories) {
       this.writeMemory(memory);
     }
-    
+
     // Write tables
     for (const table of this.module.tables) {
       this.writeTable(table);
     }
-    
+
     // Write globals
     for (const global of this.module.globals) {
       this.writeGlobal(global);
     }
-    
+
     // Write functions
     for (const func of this.module.functions) {
       this.writeFunction(func);
     }
-    
+
     // Write exports
     for (const exp of this.module.exports) {
       this.writeExport(exp);
     }
-    
+
     this.dedent();
     if (this.lines.length === 1) {
       this.lines[0] += ")";
@@ -58,7 +58,11 @@ export class WatGenerator {
   }
 
   private writeImport(imp: types.WatImport): void {
-    this.writeLine(`(import "${imp.module}" "${imp.name}" (${imp.kind}${imp.type ? ` ${imp.type}` : ""}))`);
+    this.writeLine(
+      `(import "${imp.module}" "${imp.name}" (${imp.kind}${
+        imp.type ? ` ${imp.type}` : ""
+      }))`,
+    );
   }
 
   private writeMemory(memory: types.WatMemory): void {
@@ -80,7 +84,7 @@ export class WatGenerator {
   private writeFunction(func: types.WatFunction): void {
     this.writeLine("(func");
     this.indent();
-    
+
     // Write parameters
     if (func.params.length > 0) {
       this.writeLine("(param");
@@ -92,7 +96,7 @@ export class WatGenerator {
       this.dedent();
       this.writeLine(")");
     }
-    
+
     // Write results
     if (func.results.length > 0) {
       this.writeLine("(result");
@@ -103,7 +107,7 @@ export class WatGenerator {
       this.dedent();
       this.writeLine(")");
     }
-    
+
     // Write locals (types only, no names)
     if (func.locals.length > 0) {
       this.writeLine("(local");
@@ -114,33 +118,43 @@ export class WatGenerator {
       this.dedent();
       this.writeLine(")");
     }
-    
+
     // Write body
     if (func.body.length > 0) {
       for (const instruction of func.body) {
         this.writeInstructionIndexed(instruction, func);
       }
     }
-    
+
     this.dedent();
     this.writeLine(")");
   }
 
   // Helper to map local/param names to indices for local.get/set
-  private getLocalIndex(name: string | undefined, func: types.WatFunction): number | undefined {
+  private getLocalIndex(
+    name: string | undefined,
+    func: types.WatFunction,
+  ): number | undefined {
     if (!name) return undefined;
     // Params first
-    const paramIdx = func.params.findIndex(p => p.name === name);
+    const paramIdx = func.params.findIndex((p) => p.name === name);
     if (paramIdx !== -1) return paramIdx;
     // Locals after params
-    const localIdx = func.locals.findIndex(l => l.name === name);
+    const localIdx = func.locals.findIndex((l) => l.name === name);
     if (localIdx !== -1) return func.params.length + localIdx;
     return undefined;
   }
 
-  private writeInstructionIndexed(instruction: { opcode: string; operands?: (string | number)[] }, func: types.WatFunction): void {
+  private writeInstructionIndexed(
+    instruction: { opcode: string; operands?: (string | number)[] },
+    func: types.WatFunction,
+  ): void {
     // Patch local.get/set to use indices
-    if ((instruction.opcode === "local.get" || instruction.opcode === "local.set") && instruction.operands && typeof instruction.operands[0] === "string") {
+    if (
+      (instruction.opcode === "local.get" ||
+        instruction.opcode === "local.set") &&
+      instruction.operands && typeof instruction.operands[0] === "string"
+    ) {
       const idx = this.getLocalIndex(instruction.operands[0] as string, func);
       if (idx !== undefined) {
         this.writeLine(`${instruction.opcode} ${idx}`);
@@ -168,4 +182,4 @@ export class WatGenerator {
   private dedent(): void {
     this.indentLevel--;
   }
-} 
+}

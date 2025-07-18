@@ -9,4 +9,4 @@ export class CallExpression {
     readonly args: readonly Expression[],
     readonly span: Span,
   ) {}
-} 
+}

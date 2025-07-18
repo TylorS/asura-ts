@@ -1,5 +1,12 @@
-import { Expression, HandlerCase, MatchCase } from "../../2025-06-17-type-inference-and-type-checking/Expression.ts";
-import { Type, TypeVariable } from "../../2025-06-17-type-inference-and-type-checking/Type.ts";
+import {
+  Expression,
+  HandlerCase,
+  MatchCase,
+} from "../../2025-06-17-type-inference-and-type-checking/Expression.ts";
+import {
+  Type,
+  TypeVariable,
+} from "../../2025-06-17-type-inference-and-type-checking/Type.ts";
 
 // Intermediate representation for WebAssembly generation
 export interface IRModule {
@@ -108,17 +115,25 @@ export class CodeGenerator {
       case "FieldAccess":
         return true;
       case "Let":
-        return this.collectMemoryOps(expr.value) || this.collectMemoryOps(expr.body);
+        return this.collectMemoryOps(expr.value) ||
+          this.collectMemoryOps(expr.body);
       case "Application":
-        return this.collectMemoryOps(expr.function) || this.collectMemoryOps(expr.argument);
+        return this.collectMemoryOps(expr.function) ||
+          this.collectMemoryOps(expr.argument);
       case "Lambda":
         return this.collectMemoryOps(expr.body);
       case "Match":
-        return this.collectMemoryOps(expr.expression) || Array.from(expr.cases.values()).some(c => this.collectMemoryOps(c.body));
+        return this.collectMemoryOps(expr.expression) ||
+          Array.from(expr.cases.values()).some((c) =>
+            this.collectMemoryOps(c.body)
+          );
       case "EffectOperation":
-        return expr.arguments.some(arg => this.collectMemoryOps(arg));
+        return expr.arguments.some((arg) => this.collectMemoryOps(arg));
       case "Handle":
-        return this.collectMemoryOps(expr.expression) || Array.from(expr.handlers.values()).some(h => this.collectMemoryOps(h.body)) || this.collectMemoryOps(expr.returnCase);
+        return this.collectMemoryOps(expr.expression) ||
+          Array.from(expr.handlers.values()).some((h) =>
+            this.collectMemoryOps(h.body)
+          ) || this.collectMemoryOps(expr.returnCase);
       case "TypeAnnotation":
         return this.collectMemoryOps(expr.expression);
       default:
@@ -129,7 +144,7 @@ export class CodeGenerator {
   private generateFunction(
     name: string,
     expression: Expression,
-    returnType: Type
+    returnType: Type,
   ): IRFunction {
     const params: IRParameter[] = [];
     const locals: IRLocal[] = [];
@@ -154,7 +169,11 @@ export class CodeGenerator {
         // Add a local for the let variable
         const id = this.nextLocalId++;
         const localName = `local_${id}`;
-        const localType: TypeVariable = { kind: "TypeVariable", id, name: "any" };
+        const localType: TypeVariable = {
+          kind: "TypeVariable",
+          id,
+          name: "any",
+        };
         locals.push({ name: localName, type: localType });
         this.collectLocals(expr.value, locals);
         this.collectLocals(expr.body, locals);
@@ -163,7 +182,11 @@ export class CodeGenerator {
       case "Lambda": {
         const id = this.nextLocalId++;
         const localName = expr.parameter;
-        const localType: TypeVariable = { kind: "TypeVariable", id, name: "any" };
+        const localType: TypeVariable = {
+          kind: "TypeVariable",
+          id,
+          name: "any",
+        };
         locals.push({ name: localName, type: localType });
         this.collectLocals(expr.body, locals);
         break;
@@ -211,7 +234,7 @@ export class CodeGenerator {
 
   private generateOperations(
     expression: Expression,
-    locals: IRLocal[]
+    locals: IRLocal[],
   ): IROperation[] {
     switch (expression.kind) {
       case "Literal":
@@ -251,7 +274,9 @@ export class CodeGenerator {
         return this.generateOperations(expression.expression, locals);
 
       default:
-        throw new Error(`Unsupported expression kind: ${JSON.stringify(expression, null, 2)}`);
+        throw new Error(
+          `Unsupported expression kind: ${JSON.stringify(expression, null, 2)}`,
+        );
     }
   }
 
@@ -274,18 +299,22 @@ export class CodeGenerator {
 
   private generateLambda(
     expression: { parameter: string; body: Expression },
-    locals: IRLocal[]
+    locals: IRLocal[],
   ): IROperation[] {
     // For lambdas, we need to create a closure
     // This is a simplified implementation that returns a function reference
     // In a real implementation, this would create a proper closure
-    
+
     // Add the parameter as a local variable
-    const paramType: TypeVariable = { kind: "TypeVariable", id: this.nextLocalId++, name: "any" };
+    const paramType: TypeVariable = {
+      kind: "TypeVariable",
+      id: this.nextLocalId++,
+      name: "any",
+    };
     locals.push({ name: expression.parameter, type: paramType });
-    
+
     const bodyOps = this.generateOperations(expression.body, locals);
-    
+
     // For now, we'll just return the body operations directly
     // In a real implementation, this would create a function and return its reference
     return bodyOps;
@@ -293,7 +322,7 @@ export class CodeGenerator {
 
   private generateApplication(
     expression: { function: Expression; argument: Expression },
-    locals: IRLocal[]
+    locals: IRLocal[],
   ): IROperation[] {
     const funcOps = this.generateOperations(expression.function, locals);
     const argOps = this.generateOperations(expression.argument, locals);
@@ -306,7 +335,7 @@ export class CodeGenerator {
 
   private generateLet(
     expression: { variable: string; value: Expression; body: Expression },
-    locals: IRLocal[]
+    locals: IRLocal[],
   ): IROperation[] {
     const valueOps = this.generateOperations(expression.value, locals);
     const bodyOps = this.generateOperations(expression.body, locals);
@@ -326,14 +355,17 @@ export class CodeGenerator {
 
   private generateRecord(
     expression: { fields: Map<string, Expression> },
-    locals: IRLocal[]
+    locals: IRLocal[],
   ): IROperation[] {
     const operations: IROperation[] = [];
-    
+
     // For records, we'll need to allocate memory and store fields
     // This is a simplified implementation
-    operations.push({ kind: "memory.allocate", operands: [expression.fields.size] });
-    
+    operations.push({
+      kind: "memory.allocate",
+      operands: [expression.fields.size],
+    });
+
     let index = 0;
     for (const [fieldName, fieldExpr] of expression.fields) {
       const fieldOps = this.generateOperations(fieldExpr, locals);
@@ -347,7 +379,7 @@ export class CodeGenerator {
 
   private generateFieldAccess(
     expression: { record: Expression; field: string },
-    locals: IRLocal[]
+    locals: IRLocal[],
   ): IROperation[] {
     const recordOps = this.generateOperations(expression.record, locals);
     return [
@@ -358,7 +390,7 @@ export class CodeGenerator {
 
   private generateVariant(
     expression: { tag: string; value: Expression },
-    locals: IRLocal[]
+    locals: IRLocal[],
   ): IROperation[] {
     const valueOps = this.generateOperations(expression.value, locals);
     return [
@@ -369,7 +401,7 @@ export class CodeGenerator {
 
   private generateMatch(
     expression: { expression: Expression; cases: Map<string, MatchCase> },
-    locals: IRLocal[]
+    locals: IRLocal[],
   ): IROperation[] {
     const exprOps = this.generateOperations(expression.expression, locals);
     const operations: IROperation[] = [...exprOps];
@@ -386,10 +418,10 @@ export class CodeGenerator {
 
   private generateEffectOperation(
     expression: { effect: string; operation: string; arguments: Expression[] },
-    locals: IRLocal[]
+    locals: IRLocal[],
   ): IROperation[] {
     const operations: IROperation[] = [];
-    
+
     // Generate operations for arguments
     for (const arg of expression.arguments) {
       const argOps = this.generateOperations(arg, locals);
@@ -406,14 +438,18 @@ export class CodeGenerator {
   }
 
   private generateHandle(
-    expression: { expression: Expression; handlers: Map<string, HandlerCase>; returnCase: Expression },
-    locals: IRLocal[]
+    expression: {
+      expression: Expression;
+      handlers: Map<string, HandlerCase>;
+      returnCase: Expression;
+    },
+    locals: IRLocal[],
   ): IROperation[] {
     const operations: IROperation[] = [];
-    
+
     // Generate handler setup
     operations.push({ kind: "handle.start", operands: [] });
-    
+
     // Generate handlers
     for (const [opName, handler] of expression.handlers) {
       operations.push({ kind: "handler.define", operands: [opName] });
@@ -433,4 +469,4 @@ export class CodeGenerator {
 
     return operations;
   }
-} 
+}

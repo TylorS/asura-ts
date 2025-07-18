@@ -11,5 +11,5 @@ export class WhileStatement {
     readonly condition: Expression,
     readonly body: Block<BreakStatement | ContinueStatement>,
     readonly span: Span,
-  ) { }
+  ) {}
 }

@@ -3,4 +3,4 @@ export * from "./Compiler.ts";
 export * from "./CodeGenerator.ts";
 export * from "./WasmTranslator.ts";
 export * from "./WitTranslator.ts";
-export * from "./WasmCompiler.ts"; 
+export * from "./WasmCompiler.ts";

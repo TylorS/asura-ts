@@ -302,19 +302,35 @@ describe("Parser Combinators", () => {
 
       // Operator parsers that return functions
       const addOp = Parser.symbol("+").pipe(
-        Parser.map(() => (left: Expr, right: Expr): Expr => ({ op: "+", left, right })),
+        Parser.map(() => (left: Expr, right: Expr): Expr => ({
+          op: "+",
+          left,
+          right,
+        })),
       );
 
       const subOp = Parser.symbol("-").pipe(
-        Parser.map(() => (left: Expr, right: Expr): Expr => ({ op: "-", left, right })),
+        Parser.map(() => (left: Expr, right: Expr): Expr => ({
+          op: "-",
+          left,
+          right,
+        })),
       );
 
       const mulOp = Parser.symbol("*").pipe(
-        Parser.map(() => (left: Expr, right: Expr): Expr => ({ op: "*", left, right })),
+        Parser.map(() => (left: Expr, right: Expr): Expr => ({
+          op: "*",
+          left,
+          right,
+        })),
       );
 
       const divOp = Parser.symbol("/").pipe(
-        Parser.map(() => (left: Expr, right: Expr): Expr => ({ op: "/", left, right })),
+        Parser.map(() => (left: Expr, right: Expr): Expr => ({
+          op: "/",
+          left,
+          right,
+        })),
       );
 
       // Define precedence levels (lower index = higher precedence)
@@ -435,11 +451,17 @@ describe("Parser Combinators", () => {
 
       // Unary operator parsers
       const negOp = Parser.symbol("-").pipe(
-        Parser.map(() => (operand: UnaryExpr): UnaryExpr => ({ op: "neg", operand })),
+        Parser.map(() => (operand: UnaryExpr): UnaryExpr => ({
+          op: "neg",
+          operand,
+        })),
       );
 
       const notOp = Parser.symbol("!").pipe(
-        Parser.map(() => (operand: UnaryExpr): UnaryExpr => ({ op: "not", operand })),
+        Parser.map(() => (operand: UnaryExpr): UnaryExpr => ({
+          op: "not",
+          operand,
+        })),
       );
 
       return Parser.unary(atom, [negOp, notOp]);

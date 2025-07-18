@@ -5,7 +5,11 @@ import { TypeChecker } from "../../2025-06-17-type-inference-and-type-checking/T
 import { CodeGenerator } from "./CodeGenerator.ts";
 import { WasmTranslator } from "./WasmTranslator.ts";
 import { WitTranslator } from "./WitTranslator.ts";
-import { WasmCompiler, WasmCompilationOptions, WasmCompilationResult } from "./WasmCompiler.ts";
+import {
+  WasmCompilationOptions,
+  WasmCompilationResult,
+  WasmCompiler,
+} from "./WasmCompiler.ts";
 import { WatGenerator } from "../wat/WatGenerator.ts";
 
 export interface CompilationResult {
@@ -54,7 +58,7 @@ export class Compiler {
 
   async compile(
     expression: Expression,
-    options: CompilationOptions = {}
+    options: CompilationOptions = {},
   ): Promise<CompilationResult> {
     const errors: CompilationError[] = [];
     const typeInfo = new Map<string, Type>();
@@ -115,18 +119,20 @@ export class Compiler {
       let wasmResult: WasmCompilationResult | undefined;
       if (options.generateWasm !== false && wat) {
         console.log("🔨 Compiling to WASM...");
-        
+
         // Check if wasm-tools is available
         const wasmToolsCheck = await this.wasmCompiler.checkWasmTools();
         if (!wasmToolsCheck.available) {
-          console.warn("⚠️ wasm-tools not available, skipping WASM compilation");
+          console.warn(
+            "⚠️ wasm-tools not available, skipping WASM compilation",
+          );
           errors.push({
             message: `wasm-tools not available: ${wasmToolsCheck.error}`,
             severity: "warning",
           });
         } else {
           console.log(`✅ wasm-tools available: ${wasmToolsCheck.version}`);
-          
+
           const wasmOptions: WasmCompilationOptions = {
             outputDir: options.outputDir,
             optimize: options.optimize,
@@ -136,21 +142,25 @@ export class Compiler {
           };
 
           wasmResult = await this.wasmCompiler.compile(wat, wit, wasmOptions);
-          
+
           if (wasmResult.success) {
             console.log("✅ WASM compilation successful");
             console.log(`📦 Generated: ${wasmResult.wasmPath}`);
             console.log(`📏 Size: ${wasmResult.size} bytes`);
-            
+
             // Validate the generated WASM
             if (wasmResult.wasmPath) {
-              const validation = await this.wasmCompiler.validateWasm(wasmResult.wasmPath);
+              const validation = await this.wasmCompiler.validateWasm(
+                wasmResult.wasmPath,
+              );
               if (validation.valid) {
                 console.log("✅ WASM validation passed");
               } else {
                 console.warn("⚠️ WASM validation failed");
                 errors.push({
-                  message: `WASM validation failed: ${validation.errors.join(", ")}`,
+                  message: `WASM validation failed: ${
+                    validation.errors.join(", ")
+                  }`,
                   severity: "warning",
                 });
               }
@@ -193,7 +203,7 @@ export class Compiler {
   // Helper method for compiling multiple expressions
   compileModule(
     expressions: Expression[],
-    options: CompilationOptions = {}
+    options: CompilationOptions = {},
   ): Promise<CompilationResult> {
     // For now, we'll compile the last expression as the main one
     // In the future, this could be enhanced to handle multiple expressions
@@ -210,12 +220,16 @@ export class Compiler {
   }
 
   // Helper method to check wasm-tools availability
-  checkWasmTools(): Promise<{ available: boolean; version?: string; error?: string }> {
+  checkWasmTools(): Promise<
+    { available: boolean; version?: string; error?: string }
+  > {
     return this.wasmCompiler.checkWasmTools();
   }
 
   // Helper method to validate a WASM file
-  validateWasm(wasmPath: string): Promise<{ valid: boolean; errors: string[] }> {
+  validateWasm(
+    wasmPath: string,
+  ): Promise<{ valid: boolean; errors: string[] }> {
     return this.wasmCompiler.validateWasm(wasmPath);
   }
 
@@ -231,4 +245,4 @@ export class Compiler {
   }> {
     return this.wasmCompiler.getWasmInfo(wasmPath);
   }
-} 
+}

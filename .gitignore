@@ -3,3 +3,6 @@
 
 # Vitest
 node_modules
+
+# Kiro
+.kiro

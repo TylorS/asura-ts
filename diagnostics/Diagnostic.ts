@@ -1,4 +1,27 @@
 import { Span } from "../tokens/Span.ts";
+import type { Token } from "../tokens/Token.ts";
+
+// Enhanced error recovery types (imported from parser)
+export interface ErrorContext {
+  parsingContexts: ParsingContext[];
+  position: number;
+  nearbyTokens: Token[];
+  metadata: Record<string, unknown>;
+}
+
+export interface ParsingContext {
+  name: string;
+  expectedElements: string[];
+  recoveryStrategies: string[];
+  metadata: Record<string, unknown>;
+}
+
+export interface RecoveryAttempt {
+  strategy: string;
+  success: boolean;
+  tokensSkipped: number;
+  message: string;
+}
 
 export enum DiagnosticSeverity {
   ERROR = "error",
@@ -20,6 +43,7 @@ export enum DiagnosticCode {
   SKIPPED_TOKENS = "P100",
   INSERTED_TOKEN = "P101",
   RECOVERED_AT = "P102",
+  INCOMPLETE_FUNCTION = "P103",
 
   // Semantic errors (for future)
   UNDEFINED_IDENTIFIER = "S001",
@@ -42,8 +66,13 @@ export class Diagnostic {
     readonly span: Span,
     readonly fileName: string,
     readonly fixes: ReadonlyArray<DiagnosticFix> = [],
-    readonly relatedInformation: ReadonlyArray<DiagnosticRelatedInformation> =
-      [],
+    readonly relatedInformation: ReadonlyArray<DiagnosticRelatedInformation> = [],
+    // Enhanced error recovery information (optional)
+    readonly parsingContext?: ErrorContext,
+    readonly expectedTokens?: string[],
+    readonly actualToken?: Token | null,
+    readonly parserStack?: string[],
+    readonly recoveryAttempts?: RecoveryAttempt[],
   ) {}
 
   isError(): boolean {
@@ -70,6 +99,11 @@ export class Diagnostic {
       this.fileName,
       [...this.fixes, fix],
       this.relatedInformation,
+      this.parsingContext,
+      this.expectedTokens,
+      this.actualToken,
+      this.parserStack,
+      this.recoveryAttempts,
     );
   }
 
@@ -83,6 +117,11 @@ export class Diagnostic {
       this.fileName,
       this.fixes,
       [...this.relatedInformation, info],
+      this.parsingContext,
+      this.expectedTokens,
+      this.actualToken,
+      this.parserStack,
+      this.recoveryAttempts,
     );
   }
 }

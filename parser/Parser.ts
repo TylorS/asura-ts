@@ -76,6 +76,12 @@ export class ParserContext {
       this.fileName,
       failure.fixes,
       failure.relatedInformation,
+      // Transfer enhanced information from ParseError to Diagnostic
+      failure.parsingContext,
+      failure.expectedTokens,
+      failure.actualToken,
+      failure.parserStack,
+      failure.recoveryAttempts,
     );
 
     this.diagnostics.add(diagnostic);
@@ -145,7 +151,7 @@ export declare namespace Parser {
 
 export type ParseResult<T> =
   | ParseSuccess<T>
-  | ParseFailure;
+  | ParseFailure<T>;
 
 export class ParseSuccess<T> implements Pipeable {
   readonly type = "success";
@@ -158,10 +164,11 @@ export class ParseSuccess<T> implements Pipeable {
   }
 }
 
-export class ParseFailure {
+export class ParseFailure<T = never> {
   readonly type = "failure";
   constructor(
     readonly errors: ReadonlyArray<ParseError>,
+    readonly partialResult?: T, // New: partial AST when available
   ) {}
 
   pipe() {
@@ -216,6 +223,49 @@ export class ParseFailure {
   }
 }
 
+// Enhanced error recovery types
+export interface ErrorContext {
+  parsingContexts: ParsingContext[];
+  position: number;
+  nearbyTokens: Token[];
+  metadata: Record<string, unknown>;
+}
+
+export interface ParsingContext {
+  name: string;
+  expectedElements: string[];
+  recoveryStrategies: string[];
+  metadata: Record<string, unknown>;
+}
+
+export interface RecoveryAttempt {
+  strategy: string;
+  success: boolean;
+  tokensSkipped: number;
+  message: string;
+}
+
+// Recovery result node types
+export class RecoveredNode<T> {
+  constructor(
+    readonly value: T,
+    readonly recoveryErrors: ParseError[],
+    readonly span: Span,
+  ) {}
+}
+
+export class PartialNode<T> {
+  constructor(
+    readonly nodeType: string,
+    readonly completedFields: Partial<T>,
+    readonly missingFields: string[],
+    readonly errors: ParseError[],
+    readonly span: Span,
+  ) {}
+}
+
+export type PartialResult<T> = T | PartialNode<T>;
+
 export class ParseError {
   constructor(
     readonly severity: DiagnosticSeverity,
@@ -224,6 +274,12 @@ export class ParseError {
     readonly span: Span,
     readonly fixes: ReadonlyArray<DiagnosticFix>,
     readonly relatedInformation: ReadonlyArray<DiagnosticRelatedInformation>,
+    // Enhanced error recovery information (optional)
+    readonly parsingContext?: ErrorContext,
+    readonly expectedTokens?: string[],
+    readonly actualToken?: Token | null,
+    readonly parserStack?: string[],
+    readonly recoveryAttempts?: RecoveryAttempt[],
   ) {}
 
   addFix(fix: DiagnosticFix): ParseError {
@@ -234,6 +290,11 @@ export class ParseError {
       this.span,
       [...this.fixes, fix],
       this.relatedInformation,
+      this.parsingContext,
+      this.expectedTokens,
+      this.actualToken,
+      this.parserStack,
+      this.recoveryAttempts,
     );
   }
 
@@ -247,6 +308,11 @@ export class ParseError {
       this.span,
       this.fixes,
       [...this.relatedInformation, relatedInformation],
+      this.parsingContext,
+      this.expectedTokens,
+      this.actualToken,
+      this.parserStack,
+      this.recoveryAttempts,
     );
   }
 
@@ -315,6 +381,30 @@ export class ParseError {
       span,
       fixes,
       relatedInformation,
+    );
+  }
+
+  // Enhanced factory method with context information
+  static errorWithContext(
+    code: DiagnosticCode,
+    message: string,
+    span: Span,
+    context: ErrorContext,
+    expectedTokens: string[] = [],
+    actualToken: Token | null = null,
+    fixes: ReadonlyArray<DiagnosticFix> = [],
+    relatedInformation: ReadonlyArray<DiagnosticRelatedInformation> = [],
+  ): ParseError {
+    return new ParseError(
+      DiagnosticSeverity.ERROR,
+      code,
+      message,
+      span,
+      fixes,
+      relatedInformation,
+      context,
+      expectedTokens,
+      actualToken,
     );
   }
 }
@@ -431,7 +521,7 @@ export function map<T, U>(
         if (result.type === "success") {
           return new ParseSuccess(mapper(result.value));
         }
-        return result;
+        return new ParseFailure(result.errors);
       },
       pipe,
     };
@@ -576,14 +666,14 @@ export function separatedBy<U>(
 }
 
 export function catchFailure<U>(
-  f: (failure: ParseFailure) => ParseResult<U>,
+  f: (failure: ParseFailure<never>) => ParseResult<U>,
 ) {
   return <T>(parser: Parser<T>): Parser<T | U> => {
     return {
       parse(context: ParserContext): ParseResult<T | U> {
         const result = parser.parse(context);
         if (result.type === "failure") {
-          return f(result);
+          return f(new ParseFailure(result.errors));
         }
         return result;
       },

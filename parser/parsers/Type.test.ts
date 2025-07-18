@@ -3,19 +3,7 @@ import * as AST from "../../ast/mod.ts";
 import { ParserContext } from "../Parser.ts";
 import { tokenizeToArray } from "../../tokens/Tokenizer.ts";
 import { DiagnosticCollection } from "../../diagnostics/mod.ts";
-import {
-  effectRecordSignature,
-  functionType,
-  intersectionType,
-  primaryType,
-  recordType,
-  regexLiteralType,
-  tupleType,
-  type,
-  typeParametersList,
-  typeReference,
-  unionType,
-} from "./Type.ts";
+import { effectRecordSignature, type, typeParametersList } from "./Type.ts";
 
 function createParserContext(source: string): ParserContext {
   const tokens = tokenizeToArray(source);
@@ -27,7 +15,7 @@ describe("Type Parser", () => {
   describe("primitive types", () => {
     it("should parse integer type", () => {
       const context = createParserContext("Int");
-      const result = primaryType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -37,7 +25,7 @@ describe("Type Parser", () => {
 
     it("should parse float type", () => {
       const context = createParserContext("Float");
-      const result = primaryType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -47,7 +35,7 @@ describe("Type Parser", () => {
 
     it("should parse big integer type", () => {
       const context = createParserContext("BigInt");
-      const result = primaryType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -57,7 +45,7 @@ describe("Type Parser", () => {
 
     it("should parse big decimal type", () => {
       const context = createParserContext("BigDecimal");
-      const result = primaryType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -67,7 +55,7 @@ describe("Type Parser", () => {
 
     it("should parse boolean type", () => {
       const context = createParserContext("Boolean");
-      const result = primaryType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -77,7 +65,7 @@ describe("Type Parser", () => {
 
     it("should parse string type", () => {
       const context = createParserContext("String");
-      const result = primaryType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -87,7 +75,7 @@ describe("Type Parser", () => {
 
     it("should parse regex type", () => {
       const context = createParserContext("Regex");
-      const result = primaryType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -154,7 +142,7 @@ describe("Type Parser", () => {
 
     it("should parse regex literal type", () => {
       const context = createParserContext("/[a-z]+/g");
-      const result = regexLiteralType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -169,7 +157,7 @@ describe("Type Parser", () => {
   describe("record types", () => {
     it("should parse empty record type", () => {
       const context = createParserContext("{}");
-      const result = recordType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -180,7 +168,7 @@ describe("Type Parser", () => {
 
     it("should parse record type with fields", () => {
       const context = createParserContext("{ name: String, age: Int }");
-      const result = recordType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -198,7 +186,7 @@ describe("Type Parser", () => {
 
     it("should parse record type with optional fields", () => {
       const context = createParserContext("{ name: String, age?: Int }");
-      const result = recordType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -208,12 +196,25 @@ describe("Type Parser", () => {
         expect(field1.optional).toBe(true);
       }
     });
+
+    it("should parse record type with spread fields", () => {
+      const context = createParserContext("{ ...T, ...U }");
+      const result = type().parse(context);
+
+      expect(result.type).toBe("success");
+      if (result.type === "success") {
+        expect(result.value).toBeInstanceOf(AST.RecordType);
+        expect((result.value as AST.RecordType).fields).toHaveLength(2);
+        expect((result.value as AST.RecordType).fields[0]).toBeInstanceOf(AST.SpreadType);
+        expect((result.value as AST.RecordType).fields[1]).toBeInstanceOf(AST.SpreadType);
+      }
+    });
   });
 
   describe("tuple types", () => {
     it("should parse empty tuple type", () => {
       const context = createParserContext("[]");
-      const result = tupleType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -224,7 +225,7 @@ describe("Type Parser", () => {
 
     it("should parse tuple type with elements", () => {
       const context = createParserContext("[String, Int, Boolean]");
-      const result = tupleType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -239,7 +240,7 @@ describe("Type Parser", () => {
 
     it("should parse tuple type with named elements", () => {
       const context = createParserContext("[name: String, age: Int]");
-      const result = tupleType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -252,7 +253,7 @@ describe("Type Parser", () => {
 
     it("should parse tuple type with optional elements", () => {
       const context = createParserContext("[name: String, age?: Int]");
-      const result = tupleType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -266,7 +267,7 @@ describe("Type Parser", () => {
   describe("union types", () => {
     it("should parse union type", () => {
       const context = createParserContext("String | Int | Boolean");
-      const result = unionType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -283,7 +284,7 @@ describe("Type Parser", () => {
   describe("intersection types", () => {
     it("should parse intersection type", () => {
       const context = createParserContext("Printable & Serializable");
-      const result = intersectionType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -299,7 +300,7 @@ describe("Type Parser", () => {
   describe("function types", () => {
     it("should parse simple function type", () => {
       const context = createParserContext("(Int, String) => Boolean");
-      const result = functionType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -312,7 +313,7 @@ describe("Type Parser", () => {
 
     it("should parse function type with effects", () => {
       const context = createParserContext("(String) => {IO} String");
-      const result = functionType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -324,7 +325,7 @@ describe("Type Parser", () => {
 
     it("should parse function type with type parameters", () => {
       const context = createParserContext("<T>(T) => T");
-      const result = functionType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -338,7 +339,7 @@ describe("Type Parser", () => {
   describe("type references", () => {
     it("should parse simple type reference", () => {
       const context = createParserContext("MyType");
-      const result = typeReference().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -351,7 +352,7 @@ describe("Type Parser", () => {
 
     it("should parse type reference with type arguments", () => {
       const context = createParserContext("List<Int>");
-      const result = typeReference().parse(context);
+        const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -365,7 +366,7 @@ describe("Type Parser", () => {
 
     it("should parse type reference with multiple type arguments", () => {
       const context = createParserContext("Map<String, Int>");
-      const result = typeReference().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -380,7 +381,7 @@ describe("Type Parser", () => {
 
     it("should parse type reference with type holes", () => {
       const context = createParserContext("List<_>");
-      const result = typeReference().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -438,11 +439,9 @@ describe("Type Parser", () => {
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
-        expect(result.value).toBeInstanceOf(AST.EffectRecordSignature);
-        const effectSig = result.value as AST.EffectRecordSignature;
-        expect(effectSig.references).toHaveLength(2);
-        expect(effectSig.references[0]).toBeInstanceOf(AST.TypeReference);
-        expect(effectSig.references[1]).toBeInstanceOf(AST.TypeReference);
+        expect(result.value.references).toHaveLength(2);
+        expect(result.value.references[0]).toBeInstanceOf(AST.TypeReference);
+        expect(result.value.references[1]).toBeInstanceOf(AST.TypeReference);
       }
     });
   });
@@ -452,7 +451,7 @@ describe("Type Parser", () => {
       const context = createParserContext(
         "{ user: { name: String, age: Int }, active: Boolean }",
       );
-      const result = recordType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -467,7 +466,7 @@ describe("Type Parser", () => {
       const context = createParserContext(
         "({ name: String }, [Int, Boolean]) => String",
       );
-      const result = functionType().parse(context);
+      const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -481,7 +480,7 @@ describe("Type Parser", () => {
 
     it("should parse union of function types", () => {
       const context = createParserContext("((Int) => String) | ((String) => Int)");
-      const result = unionType().parse(context);
+            const result = type().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -490,6 +489,36 @@ describe("Type Parser", () => {
         expect(unionType.types).toHaveLength(2);
         expect(unionType.types[0]).toBeInstanceOf(AST.FunctionType);
         expect(unionType.types[1]).toBeInstanceOf(AST.FunctionType);
+      }
+    });
+  });
+
+  describe("type holes", () => {
+    it("should parse type hole", () => {
+      const context = createParserContext("Foo<_>");
+      const result = type().parse(context);
+
+      expect(result.type).toBe("success");
+      if (result.type === "success") {
+        expect(result.value).toBeInstanceOf(AST.TypeReference);
+        const typeRef = result.value as AST.TypeReference;
+        expect(typeRef.name.text).toBe("Foo");
+        expect(typeRef.typeArguments).toHaveLength(1);
+        expect(typeRef.typeArguments[0]).toBeInstanceOf(AST.TypeHole);
+      }
+    });
+  });
+
+  describe("array types", () => {
+    it("should parse array type", () => {
+      const context = createParserContext("Array<Int>");
+      const result = type().parse(context);
+
+      expect(result.type).toBe("success");
+      if (result.type === "success") {
+        expect(result.value).toBeInstanceOf(AST.ArrayType);
+        const arrayType = result.value as AST.ArrayType;
+        expect(arrayType.elementType).toBeInstanceOf(AST.IntegerType);
       }
     });
   });

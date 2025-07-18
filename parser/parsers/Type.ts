@@ -38,12 +38,12 @@ export function primaryType(): Parser.Parser<AST.Type> {
     Parser.lazy(functionType),
     Parser.lazy(parenthesizedType),
     Parser.lazy(baseLiteral),
+    Parser.lazy(arrayType),
     Parser.lazy(typeReference),
     Parser.lazy(regexLiteralType),
-    Parser.lazy(arrayType),
     Parser.lazy(recordType),
-    Parser.lazy(tupleType),
     Parser.lazy(effectType),
+    Parser.lazy(tupleType),
   );
 }
 
@@ -200,7 +200,7 @@ function effectField(): Parser.Parser<AST.EffectField> {
 }
 
 export function recordType(): Parser.Parser<AST.RecordType> {
-  return Parser.lazy(recordTypeField).pipe(
+  return Parser.or(Parser.lazy(recordTypeField), Parser.lazy(spreadType)).pipe(
     Parser.separatedBy(Parser.symbol(",")),
     Parser.optional,
     Parser.delimitedBy(Parser.symbol("{"), Parser.symbol("}")),

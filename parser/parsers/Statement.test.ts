@@ -1,30 +1,12 @@
 import { describe, expect, it } from "vitest";
 import * as AST from "../../ast/mod.ts";
-import { ParserContext, ParseResult, ParseSuccess } from "../Parser.ts";
-import { tokenizeToArray } from "../../tokens/Tokenizer.ts";
 import {
   DiagnosticCollection,
   formatDiagnostics,
 } from "../../diagnostics/mod.ts";
-import {
-  block,
-  breakStatement,
-  continueStatement,
-  dataDeclaration,
-  effectDeclaration,
-  expressionStatement,
-  forInStatement,
-  forOfStatement,
-  forStatement,
-  functionDeclaration,
-  ifStatement,
-  importDeclaration,
-  interfaceDeclaration,
-  letDeclaration,
-  statement,
-  typeAliasDeclaration,
-  whileStatement,
-} from "./Statement.ts";
+import { tokenizeToArray } from "../../tokens/Tokenizer.ts";
+import { ParserContext, ParseResult, ParseSuccess } from "../Parser.ts";
+import { block, breakStatement, continueStatement, statement } from "./Statement.ts";
 
 function createParserContext(source: string): ParserContext {
   const tokens = tokenizeToArray(source);
@@ -87,7 +69,7 @@ describe("Statement Parser", () => {
   describe("import declarations", () => {
     it("should parse namespace imports", () => {
       const context = createParserContext('import * as utils from "utils"');
-      const result = importDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -101,7 +83,7 @@ describe("Statement Parser", () => {
       const context = createParserContext(
         'import { foo, bar as baz } from "module"',
       );
-      const result = importDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -117,7 +99,7 @@ describe("Statement Parser", () => {
   describe("data declarations", () => {
     it("should parse simple data declarations", () => {
       const context = createParserContext("data Option = Some(A) | None");
-      const result = dataDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -132,7 +114,7 @@ describe("Statement Parser", () => {
       const context = createParserContext(
         "data Maybe<T> = Just(T) | Nothing",
       );
-      const result = dataDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -146,7 +128,7 @@ describe("Statement Parser", () => {
       const context = createParserContext(
         "export data Result<T, E> = Ok(T) | Err(E)",
       );
-      const result = dataDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -162,7 +144,7 @@ describe("Statement Parser", () => {
       const context = createParserContext(
         "effect IO { read: (String) => String, write: (String) => Unit }",
       );
-      const result = effectDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -177,7 +159,7 @@ describe("Statement Parser", () => {
       const context = createParserContext(
         "export effect Console { log: (String) => Unit }",
       );
-      const result = effectDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -193,7 +175,7 @@ describe("Statement Parser", () => {
       const context = createParserContext(
         "fun add(x: Int, y: Int): Int => x + y",
       );
-      const result = functionDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -209,7 +191,7 @@ describe("Statement Parser", () => {
       const context = createParserContext(
         "fun readFile(path: String): {IO} String => { /* body */ }",
       );
-      const result = functionDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -223,7 +205,7 @@ describe("Statement Parser", () => {
       const context = createParserContext(
         "export fun multiply(x: Int, y: Int): Int => x * y",
       );
-      const result = functionDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -239,7 +221,7 @@ describe("Statement Parser", () => {
       const context = createParserContext(
         "interface Printable { toString: () => String }",
       );
-      const result = interfaceDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -254,7 +236,7 @@ describe("Statement Parser", () => {
       const context = createParserContext(
         "interface Collection<T> extends Iterable<T> { size: () => Int }",
       );
-      const result = interfaceDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -268,7 +250,7 @@ describe("Statement Parser", () => {
   describe("let declarations", () => {
     it("should parse simple let declarations", () => {
       const context = createParserContext("let x = 42");
-      const result = letDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -281,7 +263,7 @@ describe("Statement Parser", () => {
 
     it("should parse let declarations with type annotations", () => {
       const context = createParserContext('let name: String = "John"');
-      const result = letDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -293,7 +275,7 @@ describe("Statement Parser", () => {
 
     it("should parse mutable let declarations", () => {
       const context = createParserContext("let mut counter = 0");
-      const result = letDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -307,7 +289,7 @@ describe("Statement Parser", () => {
   describe("type alias declarations", () => {
     it("should parse type alias declarations", () => {
       const context = createParserContext("type Point = { x: Int, y: Int }");
-      const result = typeAliasDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -322,7 +304,7 @@ describe("Statement Parser", () => {
       const context = createParserContext(
         "type Result<T, E> = Ok(T) | Err(E)",
       );
-      const result = typeAliasDeclaration().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -343,7 +325,7 @@ describe("Statement Parser", () => {
         }
       `;
       const context = createParserContext(source);
-      const result = ifStatement().parse(context);
+      const result = statement().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.IfStatement);
@@ -360,7 +342,7 @@ describe("Statement Parser", () => {
         }
       `;
       const context = createParserContext(source);
-      const result = whileStatement().parse(context);
+      const result = statement().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.WhileStatement);
@@ -376,7 +358,7 @@ describe("Statement Parser", () => {
         }
       `;
       const context = createParserContext(source);
-      const result = forStatement().parse(context);
+      const result = statement().parse(context);
 
       assertSuccess(result, context, source);
 
@@ -394,7 +376,7 @@ describe("Statement Parser", () => {
           print(item);
         }
       `);
-      const result = forInStatement().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -411,7 +393,7 @@ describe("Statement Parser", () => {
           print(value);
         }
       `);
-      const result = forOfStatement().parse(context);
+      const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {
@@ -474,7 +456,7 @@ describe("Statement Parser", () => {
   describe("expression statements", () => {
     it("should parse expression statements", () => {
       const context = createParserContext("x + y");
-      const result = expressionStatement().parse(context);
+        const result = statement().parse(context);
 
       expect(result.type).toBe("success");
       if (result.type === "success") {

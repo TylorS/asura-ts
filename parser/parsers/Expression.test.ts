@@ -1,20 +1,13 @@
 import { describe, expect, it } from "vitest";
 import * as AST from "../../ast/mod.ts";
-import { ParserContext, ParseResult, ParseSuccess } from "../Parser.ts";
-import { tokenizeToArray } from "../../tokens/Tokenizer.ts";
-import { DiagnosticCollection } from "../../diagnostics/mod.ts";
-import {
-  arrayLiteral,
-  returnExpressionOrBlock,
-  binaryExpression,
-  expression,
-  functionExpression,
-  literals,
-  matchExpression,
-  recordLiteral,
-  unaryExpression,
-} from "./Expression.ts";
 import { formatDiagnostics } from "../../diagnostics/DiagnosticFormatter.ts";
+import { DiagnosticCollection } from "../../diagnostics/mod.ts";
+import { tokenizeToArray } from "../../tokens/Tokenizer.ts";
+import { ParserContext, ParseResult, ParseSuccess } from "../Parser.ts";
+import {
+  expression,
+  returnExpressionOrBlock
+} from "./Expression.ts";
 
 function createParserContext(source: string): ParserContext {
   const tokens = tokenizeToArray(source);
@@ -48,7 +41,7 @@ describe("Expression Parser", () => {
     it("should parse integer literals", () => {
       const source = "42";
       const context = createParserContext(source);
-      const result = literals().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.IntegerLiteral);
@@ -58,7 +51,7 @@ describe("Expression Parser", () => {
     it("should parse float literals", () => {
       const source = "3.14";
       const context = createParserContext(source);
-      const result = literals().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.FloatLiteral);
@@ -68,7 +61,7 @@ describe("Expression Parser", () => {
     it("should parse big integer literals", () => {
       const source = "42n";
       const context = createParserContext(source);
-      const result = literals().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BigIntLiteral);
@@ -78,7 +71,7 @@ describe("Expression Parser", () => {
     it("should parse big decimal literals", () => {
       const source = "3.14n";
       const context = createParserContext(source);
-      const result = literals().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BigDecimalLiteral);
@@ -90,7 +83,7 @@ describe("Expression Parser", () => {
     it("should parse boolean literals", () => {
       const source = "true";
       const context = createParserContext(source);
-      const result = literals().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BooleanLiteral);
@@ -100,7 +93,7 @@ describe("Expression Parser", () => {
     it("should parse string literals", () => {
       const source = '"hello world"';
       const context = createParserContext(source);
-      const result = literals().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.StringLiteral);
@@ -110,7 +103,7 @@ describe("Expression Parser", () => {
     it("should parse regex literals", () => {
       const source = "/[a-z]+/g";
       const context = createParserContext(source);
-      const result = literals().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.RegexLiteral);
@@ -122,7 +115,7 @@ describe("Expression Parser", () => {
     it("should parse regex literals with spaces", () => {
       const source = "/[a-z ]+/g ";
       const context = createParserContext(source);
-      const result = literals().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.RegexLiteral);
@@ -136,7 +129,7 @@ describe("Expression Parser", () => {
     it("should parse empty array literals", () => {
       const source = "[]";
       const context = createParserContext(source);
-      const result = arrayLiteral().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.ArrayLiteral);
@@ -146,7 +139,7 @@ describe("Expression Parser", () => {
     it("should parse array literals with elements", () => {
       const source = "[1, 2, 3]";
       const context = createParserContext(source);
-      const result = arrayLiteral().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.ArrayLiteral);
@@ -160,7 +153,7 @@ describe("Expression Parser", () => {
     it("should parse nested array literals", () => {
       const source = "[[1, 2], [3, 4]]";
       const context = createParserContext(source);
-      const result = arrayLiteral().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.ArrayLiteral);
@@ -175,7 +168,7 @@ describe("Expression Parser", () => {
     it("should parse empty record literals", () => {
       const source = "{}";
       const context = createParserContext(source);
-      const result = recordLiteral().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.RecordLiteral);
@@ -185,7 +178,7 @@ describe("Expression Parser", () => {
     it("should parse record literals with fields", () => {
       const source = '{name: "John", age: 30}';
       const context = createParserContext(source);
-      const result = recordLiteral().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.RecordLiteral);
@@ -217,7 +210,7 @@ describe("Expression Parser", () => {
     it("should parse unary minus", () => {
       const source = "-42";
       const context = createParserContext(source);
-      const result = unaryExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.UnaryExpression);
@@ -229,7 +222,7 @@ describe("Expression Parser", () => {
     it("should parse unary not", () => {
       const source = "!true";
       const context = createParserContext(source);
-      const result = unaryExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.UnaryExpression);
@@ -243,7 +236,7 @@ describe("Expression Parser", () => {
     it("should parse addition", () => {
       const source = "1 + 2";
       const context = createParserContext(source);
-      const result = binaryExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BinaryExpression);
@@ -256,7 +249,7 @@ describe("Expression Parser", () => {
     it("should parse multiplication", () => {
       const source = "3 * 4";
       const context = createParserContext(source);
-      const result = binaryExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BinaryExpression);
@@ -267,7 +260,7 @@ describe("Expression Parser", () => {
     it("should respect operator precedence", () => {
       const source = "1 + 2 * 3";
       const context = createParserContext(source);
-      const result = binaryExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BinaryExpression);
@@ -281,7 +274,7 @@ describe("Expression Parser", () => {
     it("should parse comparison operators", () => {
       const source = "1 < 2";
       const context = createParserContext(source);
-      const result = binaryExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BinaryExpression);
@@ -292,7 +285,7 @@ describe("Expression Parser", () => {
     it("should parse logical operators", () => {
       const source = "true && false";
       const context = createParserContext(source);
-      const result = binaryExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BinaryExpression);
@@ -303,7 +296,7 @@ describe("Expression Parser", () => {
     it("should parse assignment operators", () => {
       const source = "x = 5";
       const context = createParserContext(source);
-      const result = binaryExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BinaryExpression);
@@ -316,7 +309,7 @@ describe("Expression Parser", () => {
     it("should parse compound assignment operators", () => {
       const source = "x += 10";
       const context = createParserContext(source);
-      const result = binaryExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BinaryExpression);
@@ -327,7 +320,7 @@ describe("Expression Parser", () => {
     it("should parse chained assignment expressions", () => {
       const source = "x = y = 5";
       const context = createParserContext(source);
-      const result = binaryExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BinaryExpression);
@@ -343,7 +336,7 @@ describe("Expression Parser", () => {
     it("should respect assignment operator precedence", () => {
       const source = "x = 1 + 2 * 3";
       const context = createParserContext(source);
-      const result = binaryExpression().parse(context);
+        const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.BinaryExpression);
@@ -360,7 +353,7 @@ describe("Expression Parser", () => {
     it("should parse simple function expressions", () => {
       const source = "fun(x: Int): Int => x + 1";
       const context = createParserContext(source);
-      const result = functionExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.FunctionExpression);
@@ -373,7 +366,7 @@ describe("Expression Parser", () => {
     it("should parse function expressions with effects", () => {
       const source = "fun(x: Int): {IO} Int => x + 1";
       const context = createParserContext(source);
-      const result = functionExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.FunctionExpression);
@@ -384,7 +377,7 @@ describe("Expression Parser", () => {
     it("should parse function expressions with type parameters", () => {
       const source = "fun<T>(x: T): T => x";
       const context = createParserContext(source);
-      const result = functionExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.FunctionExpression);
@@ -400,7 +393,7 @@ describe("Expression Parser", () => {
   _ => "other"
 }`;
       const context = createParserContext(source);
-      const result = matchExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.MatchExpression);
@@ -414,7 +407,7 @@ describe("Expression Parser", () => {
   _ => "other"
 }`;
       const context = createParserContext(source);
-      const result = matchExpression().parse(context);
+      const result = expression().parse(context);
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.MatchExpression);

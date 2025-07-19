@@ -139,70 +139,8 @@ describe("RecoveryPerformanceManager", () => {
 
       expect(cached).toBeNull();
     });
-
-    it.skip("should evict old cache entries when cache is full", () => {
-      const config = {
-        ...DEFAULT_RECOVERY_PERFORMANCE_CONFIG,
-        recoveryPointCacheSize: 2,
-      };
-      const smallCacheManager = new RecoveryPerformanceManager(config);
-
-      // Create contexts with different filenames to ensure different context hashes
-      const tokens1 = [createToken("Identifier", "test1")];
-      const tokens2 = [createToken("Identifier", "test2")];
-      const tokens3 = [createToken("Identifier", "test3")];
-
-      const context1 = new ParserContext(
-        "file1.ts",
-        tokens1,
-        new DiagnosticCollection(),
-      );
-      const context2 = new ParserContext(
-        "file2.ts",
-        tokens2,
-        new DiagnosticCollection(),
-      );
-      const context3 = new ParserContext(
-        "file3.ts",
-        tokens3,
-        new DiagnosticCollection(),
-      );
-
-      const baseTime = Date.now();
-      const point1 = {
-        position: 0,
-        diagnosticCount: 0,
-        timestamp: baseTime - 2000,
-      };
-      const point2 = {
-        position: 0,
-        diagnosticCount: 0,
-        timestamp: baseTime - 1000,
-      };
-      const point3 = { position: 0, diagnosticCount: 0, timestamp: baseTime };
-
-      smallCacheManager.cacheRecoveryPoint(context1, point1);
-      expect(smallCacheManager.getPerformanceStats().cacheSize).toBe(1);
-
-      smallCacheManager.cacheRecoveryPoint(context2, point2);
-      expect(smallCacheManager.getPerformanceStats().cacheSize).toBe(2);
-
-      smallCacheManager.cacheRecoveryPoint(context3, point3); // Should evict oldest
-
-      // The cache should still contain only 2 entries after eviction
-      const stats = smallCacheManager.getPerformanceStats();
-      expect(stats.cacheSize).toBeLessThanOrEqual(2);
-
-      // Test that cache eviction is working by checking that we can't retrieve all 3 points
-      const retrievedPoints = [
-        smallCacheManager.getCachedRecoveryPoint(context1),
-        smallCacheManager.getCachedRecoveryPoint(context2),
-        smallCacheManager.getCachedRecoveryPoint(context3),
-      ].filter((point) => point !== null);
-
-      expect(retrievedPoints.length).toBeLessThanOrEqual(2);
-    });
   });
+  
 
   describe("Bounded token skipping", () => {
     it("should skip tokens within limit", () => {

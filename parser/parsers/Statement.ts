@@ -20,6 +20,7 @@ import {
   typeParametersList,
   typeReference,
 } from "./Type.ts";
+import { pipe } from '../Pipeable'
 
 // Helper function to add parsing context tracking
 function withParsingContext<T>(
@@ -45,6 +46,7 @@ function withParsingContext<T>(
         context.popParsingContext();
       }
     },
+    pipe,
   };
 }
 
@@ -261,7 +263,7 @@ export function dataDeclaration(): Parser.Parser<AST.DataDeclaration> {
           );
         },
       ),
-    ),
+    )
   );
 }
 
@@ -475,15 +477,7 @@ export function identiferOrDestructuring(): Parser.Parser<AST.Identifier> {
 export function letDeclaration(): Parser.Parser<AST.LetDeclaration> {
   return withParsingContext(
     "let-declaration",
-    [
-      "export",
-      "let",
-      "mut",
-      "identifier",
-      "type-annotation",
-      "assignment",
-      "expression",
-    ],
+    ["export", "let", "mut", "identifier", "type-annotation", "assignment", "expression"],
     Parser.seq(
       Parser.optional(Parser.token("export")),
       Parser.token("let"),
@@ -518,7 +512,7 @@ export function letDeclaration(): Parser.Parser<AST.LetDeclaration> {
           );
         },
       ),
-    ),
+    )
   );
 }
 
@@ -717,7 +711,7 @@ export function ifStatement(): Parser.Parser<AST.IfStatement> {
           new AST.Span(_if.span.start, else_?.span.end ?? then.span.end),
         );
       }),
-    ),
+    )
   );
 }
 

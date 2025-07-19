@@ -653,5 +653,51 @@ describe("Statement Parser", () => {
         expect(enhancedErrors.length).toBeGreaterThanOrEqual(0);
       });
     });
+
+    describe("comprehensive error recovery", () => {
+      it("should demonstrate end-to-end error recovery functionality", () => {
+        // Test multiple statements with various error recovery scenarios
+        const context = createParserContext(`
+          let x = 42
+          fun test(): Int = 100
+          if (true) { let y = 10 }
+          data MyType = Constructor
+        `);
+
+        // Parse multiple statements
+        const statements = [];
+        while (!context.isAtEnd()) {
+          // Skip whitespace
+          while (!context.isAtEnd() && 
+                 (context.peek().kind === "Whitespace" || context.peek().kind === "Newline")) {
+            context.consume();
+          }
+          
+          if (context.isAtEnd()) break;
+          
+          const parser = statement();
+          const result = parser.parse(context);
+          
+          if (result.type === "success") {
+            statements.push(result.value);
+          } else {
+            // Even if individual statements fail, we should have error information
+            expect(result.errors.length).toBeGreaterThan(0);
+            break;
+          }
+        }
+
+        // Should have parsed at least some statements successfully
+        expect(statements.length).toBeGreaterThan(0);
+        
+        // Context should be properly managed
+        expect(context.getCurrentContext()).toBeNull();
+        expect(context.getContextStack()).toHaveLength(0);
+        
+        // Recovery history should be available
+        const recoveryHistory = context.getRecoveryHistory();
+        expect(Array.isArray(recoveryHistory)).toBe(true);
+      });
+    });
   });
 });

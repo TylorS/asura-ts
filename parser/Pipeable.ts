@@ -577,17 +577,29 @@ const pipeLookup = [
   // 3 args
   <A>(self: A, args: IArguments): unknown => args[2](args[1](args[0](self))),
   // 4 args
-  <A>(self: A, args: IArguments): unknown => args[3](args[2](args[1](args[0](self)))),
+  <A>(self: A, args: IArguments): unknown =>
+    args[3](args[2](args[1](args[0](self)))),
   // 5 args
-  <A>(self: A, args: IArguments): unknown => args[4](args[3](args[2](args[1](args[0](self))))),
+  <A>(self: A, args: IArguments): unknown =>
+    args[4](args[3](args[2](args[1](args[0](self))))),
   // 6 args
-  <A>(self: A, args: IArguments): unknown => args[5](args[4](args[3](args[2](args[1](args[0](self)))))),
+  <A>(self: A, args: IArguments): unknown =>
+    args[5](args[4](args[3](args[2](args[1](args[0](self)))))),
   // 7 args
-  <A>(self: A, args: IArguments): unknown => args[6](args[5](args[4](args[3](args[2](args[1](args[0](self))))))),
+  <A>(self: A, args: IArguments): unknown =>
+    args[6](args[5](args[4](args[3](args[2](args[1](args[0](self))))))),
   // 8 args
-  <A>(self: A, args: IArguments): unknown => args[7](args[6](args[5](args[4](args[3](args[2](args[1](args[0](self)))))))),
+  <A>(self: A, args: IArguments): unknown =>
+    args[7](
+      args[6](args[5](args[4](args[3](args[2](args[1](args[0](self))))))),
+    ),
   // 9 args
-  <A>(self: A, args: IArguments): unknown => args[8](args[7](args[6](args[5](args[4](args[3](args[2](args[1](args[0](self))))))))),
+  <A>(self: A, args: IArguments): unknown =>
+    args[8](
+      args[7](
+        args[6](args[5](args[4](args[3](args[2](args[1](args[0](self))))))),
+      ),
+    ),
 ];
 
 export const pipeArguments = <A>(self: A, args: IArguments): unknown => {

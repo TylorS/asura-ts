@@ -4,7 +4,7 @@ import * as Parser from "../Parser.ts";
 import { pipe } from "../Pipeable.ts";
 import { block } from "./Statement.ts";
 import { effectRecordSignature, type, typeParametersList } from "./Type.ts";
-import { ExpressionRecovery, DelimiterRecovery } from "../ErrorRecovery.ts";
+import { ExpressionRecovery } from "../ErrorRecovery.ts";
 
 // Demonstration function showing error recovery integration for expressions
 // This function shows how error recovery can be integrated without breaking existing functionality
@@ -15,7 +15,7 @@ export function expressionWithRecovery(): Parser.Parser<AST.Expression> {
       context.pushParsingContext({
         name: "expression-with-recovery",
         expectedElements: ["expression"],
-        recoveryStrategies: [new ExpressionRecovery(), new DelimiterRecovery()],
+        recoveryStrategies: ["expression"],
         metadata: { type: "expression" },
       });
 
@@ -25,13 +25,17 @@ export function expressionWithRecovery(): Parser.Parser<AST.Expression> {
           expression(),
           // Fallback parser that creates a placeholder expression
           {
-            parse(ctx: Parser.ParserContext): Parser.ParseResult<AST.Expression> {
+            parse(
+              ctx: Parser.ParserContext,
+            ): Parser.ParseResult<AST.Expression> {
               const span = ctx.span();
-              return new Parser.ParseSuccess(new AST.Identifier("__recovered__", span));
+              return new Parser.ParseSuccess(
+                new AST.Identifier("__recovered__", span),
+              );
             },
             pipe,
           },
-          new ExpressionRecovery()
+          new ExpressionRecovery(),
         ).parse(context);
       } finally {
         context.popParsingContext();

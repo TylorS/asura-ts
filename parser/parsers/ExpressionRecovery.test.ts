@@ -3,15 +3,19 @@ import { DiagnosticCollection } from "../../diagnostics/mod.ts";
 import { Span, SpanLocation } from "../../tokens/Span.ts";
 import { Token } from "../../tokens/Token.ts";
 import { ParserContext } from "../Parser.ts";
-import { 
-  expression, 
+import {
+  arrayLiteral,
+  expression,
   expressionWithRecovery,
-  arrayLiteral, 
-  recordLiteral
+  recordLiteral,
 } from "./Expression.ts";
 
 // Helper function to create a simple token
-function createToken(kind: Token["kind"], text: string = "", symbol?: string): Token {
+function createToken(
+  kind: Token["kind"],
+  text: string = "",
+  symbol?: string,
+): Token {
   const span = new Span(
     new SpanLocation(1, 1, 0),
     new SpanLocation(1, 1, text.length),
@@ -84,10 +88,10 @@ describe("Expression Parser Error Recovery", () => {
       const result = expressionWithRecovery().parse(context);
 
       expect(result.type).toBe("success");
-      
+
       // Context should have been pushed and popped
       expect(context.getCurrentContext()).toBeNull();
-      
+
       // Recovery history should be available
       const recoveryHistory = context.getRecoveryHistory();
       expect(Array.isArray(recoveryHistory)).toBe(true);

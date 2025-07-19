@@ -1,4 +1,9 @@
-import { ParserContext, RecoveryPoint, RecoveryEvent, ParsingContext } from "./Parser.ts";
+import {
+  ParserContext,
+  ParsingContext,
+  RecoveryEvent,
+  RecoveryPoint,
+} from "./Parser.ts";
 
 /**
  * Performance optimization configuration for error recovery
@@ -50,7 +55,9 @@ export class RecoveryPerformanceManager {
   private isRecoveryActive = false;
   private recoveryAttemptCount = 0;
 
-  constructor(config: RecoveryPerformanceConfig = DEFAULT_RECOVERY_PERFORMANCE_CONFIG) {
+  constructor(
+    config: RecoveryPerformanceConfig = DEFAULT_RECOVERY_PERFORMANCE_CONFIG,
+  ) {
     this.config = config;
   }
 
@@ -123,7 +130,7 @@ export class RecoveryPerformanceManager {
     }
 
     const contextHash = this.generateContextHash(context);
-    
+
     // Evict old entries if cache will be full after adding new entry
     if (this.recoveryPointCache.size >= this.config.recoveryPointCacheSize) {
       this.evictOldestCacheEntry();
@@ -143,7 +150,7 @@ export class RecoveryPerformanceManager {
   boundedTokenSkip(context: ParserContext, maxSkip?: number): number {
     const limit = Math.min(
       maxSkip ?? this.config.maxTokensToSkip,
-      this.config.maxTokensToSkip
+      this.config.maxTokensToSkip,
     );
 
     let tokensSkipped = 0;
@@ -162,7 +169,7 @@ export class RecoveryPerformanceManager {
    */
   manageRecoveryHistory(context: ParserContext): void {
     const history = context.getRecoveryHistory();
-    
+
     if (history.length > this.config.maxRecoveryHistorySize) {
       // Remove oldest entries, keeping the most recent ones
       const excessCount = history.length - this.config.maxRecoveryHistorySize;
@@ -175,12 +182,12 @@ export class RecoveryPerformanceManager {
    */
   manageContextStack(context: ParserContext): boolean {
     const stack = context.getContextStack();
-    
+
     if (stack.length >= this.config.maxContextStackDepth) {
       // Prevent further context pushes
       return false;
     }
-    
+
     return true;
   }
 
@@ -195,9 +202,9 @@ export class RecoveryPerformanceManager {
   } {
     const totalHits = Array.from(this.recoveryPointCache.values())
       .reduce((sum, cached) => sum + cached.hitCount, 0);
-    
-    const cacheHitRate = this.recoveryPointCache.size > 0 
-      ? totalHits / this.recoveryPointCache.size 
+
+    const cacheHitRate = this.recoveryPointCache.size > 0
+      ? totalHits / this.recoveryPointCache.size
       : 0;
 
     return {
@@ -222,10 +229,10 @@ export class RecoveryPerformanceManager {
   private generateContextHash(context: ParserContext): string {
     const position = context.getPosition();
     const contextStack = context.getContextStack();
-    const contextNames = contextStack.map(ctx => ctx.name).join('|');
+    const contextNames = contextStack.map((ctx) => ctx.name).join("|");
     const fileName = context.fileName;
     const tokenCount = context.tokens.length;
-    
+
     // More unique hash based on position, context stack, filename, and token count
     return `${fileName}:${position}:${tokenCount}:${contextNames}`;
   }
@@ -300,7 +307,10 @@ export class BoundedRecoveryHistory {
   private currentIndex = 0;
   private isFull = false;
 
-  constructor(maxSize: number = DEFAULT_RECOVERY_PERFORMANCE_CONFIG.maxRecoveryHistorySize) {
+  constructor(
+    maxSize: number =
+      DEFAULT_RECOVERY_PERFORMANCE_CONFIG.maxRecoveryHistorySize,
+  ) {
     this.maxSize = maxSize;
     this.events = new Array(maxSize);
   }
@@ -311,7 +321,7 @@ export class BoundedRecoveryHistory {
   addEvent(event: RecoveryEvent): void {
     this.events[this.currentIndex] = event;
     this.currentIndex = (this.currentIndex + 1) % this.maxSize;
-    
+
     if (this.currentIndex === 0) {
       this.isFull = true;
     }
@@ -328,7 +338,7 @@ export class BoundedRecoveryHistory {
     // Return events in chronological order when buffer is full
     return [
       ...this.events.slice(this.currentIndex),
-      ...this.events.slice(0, this.currentIndex)
+      ...this.events.slice(0, this.currentIndex),
     ];
   }
 
@@ -363,7 +373,9 @@ export class BoundedContextStack {
   private stack: ParsingContext[];
   private maxDepth: number;
 
-  constructor(maxDepth: number = DEFAULT_RECOVERY_PERFORMANCE_CONFIG.maxContextStackDepth) {
+  constructor(
+    maxDepth: number = DEFAULT_RECOVERY_PERFORMANCE_CONFIG.maxContextStackDepth,
+  ) {
     this.maxDepth = maxDepth;
     this.stack = [];
   }

@@ -142,7 +142,10 @@ export class DelimiterRecovery implements RecoveryStrategy {
           const enhancedError = EnhancedErrorFactory.missingDelimiter(
             context,
             expectedCloser,
-            { token: context.tokens[opener.position], position: opener.position },
+            {
+              token: context.tokens[opener.position],
+              position: opener.position,
+            },
           );
 
           // Record the enhanced error with intelligent fix suggestions

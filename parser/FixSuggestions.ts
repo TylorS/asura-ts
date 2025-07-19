@@ -1,7 +1,7 @@
 import { Token } from "../tokens/Token.ts";
 import { Span } from "../tokens/Span.ts";
 import { DiagnosticCode, DiagnosticFix } from "../diagnostics/mod.ts";
-import { ParseError, ParserContext, ErrorContext } from "./Parser.ts";
+import { ErrorContext, ParseError, ParserContext } from "./Parser.ts";
 
 /**
  * Intelligent fix suggestion system for common error patterns
@@ -24,8 +24,9 @@ export class FixSuggestionEngine {
       // We have an opening delimiter, suggest closing at current position
       fixes.push({
         kind: "insert",
-        message: `Insert missing '${delimiterText}' to match '${this.getDelimiterText(openingDelimiter.token.symbol)
-          }' at line ${openingDelimiter.token.span?.start?.line || 1}`,
+        message: `Insert missing '${delimiterText}' to match '${
+          this.getDelimiterText(openingDelimiter.token.symbol)
+        }' at line ${openingDelimiter.token.span?.start?.line || 1}`,
         span: span,
         replacement: delimiterText,
       });
@@ -89,7 +90,9 @@ export class FixSuggestionEngine {
       }
     } else {
       // Find potential matching delimiter
-      const matchingDelimiter = this.findMatchingDelimiter(unmatchedToken.symbol);
+      const matchingDelimiter = this.findMatchingDelimiter(
+        unmatchedToken.symbol,
+      );
       if (matchingDelimiter) {
         const matchingText = this.getDelimiterText(matchingDelimiter);
 
@@ -103,14 +106,20 @@ export class FixSuggestionEngine {
           fixes.push({
             kind: "insert",
             message: `Insert '${matchingText}' to match '${unmatchedText}'`,
-            span: new Span(matchingPosition.span.start, matchingPosition.span.start),
+            span: new Span(
+              matchingPosition.span.start,
+              matchingPosition.span.start,
+            ),
             replacement: matchingText,
           });
         } else if (unmatchedToken.span) {
           fixes.push({
             kind: "insert",
             message: `Insert matching '${matchingText}' for '${unmatchedText}'`,
-            span: new Span(unmatchedToken.span.start, unmatchedToken.span.start),
+            span: new Span(
+              unmatchedToken.span.start,
+              unmatchedToken.span.start,
+            ),
             replacement: matchingText,
           });
         }
@@ -165,7 +174,8 @@ export class FixSuggestionEngine {
       // Suggest prefixing with underscore or letter
       fixes.push({
         kind: "replace",
-        message: `Prefix identifier with underscore (identifiers cannot start with numbers)`,
+        message:
+          `Prefix identifier with underscore (identifiers cannot start with numbers)`,
         span: invalidToken.span,
         replacement: `_${tokenText}`,
       });
@@ -238,7 +248,8 @@ export class FixSuggestionEngine {
     for (const alternative of alternativeKeywords) {
       fixes.push({
         kind: "replace",
-        message: `Use '${alternative}' instead of '${keyword}' in ${actualContext}`,
+        message:
+          `Use '${alternative}' instead of '${keyword}' in ${actualContext}`,
         span: context.span(),
         replacement: alternative,
       });
@@ -255,7 +266,11 @@ export class FixSuggestionEngine {
     message: string,
     span: Span,
     context: ParserContext,
-    errorType: "missing-delimiter" | "unmatched-delimiter" | "invalid-identifier" | "wrong-keyword",
+    errorType:
+      | "missing-delimiter"
+      | "unmatched-delimiter"
+      | "invalid-identifier"
+      | "wrong-keyword",
     errorData: {
       expectedDelimiter?: string;
       unmatchedToken?: Token;
@@ -352,7 +367,10 @@ export class FixSuggestionEngine {
     return null;
   }
 
-  private static findEndOfLine(context: ParserContext, currentSpan: Span): Span | null {
+  private static findEndOfLine(
+    context: ParserContext,
+    currentSpan: Span,
+  ): Span | null {
     const currentPos = context.getPosition();
 
     // Look forward for end of line
@@ -377,9 +395,31 @@ export class FixSuggestionEngine {
 
   private static isKeyword(text: string): boolean {
     const keywords = new Set([
-      "fun", "let", "data", "interface", "type", "if", "else", "while", "for",
-      "match", "return", "break", "continue", "true", "false", "null", "in", "of",
-      "export", "import", "from", "as", "public", "private", "readonly",
+      "fun",
+      "let",
+      "data",
+      "interface",
+      "type",
+      "if",
+      "else",
+      "while",
+      "for",
+      "match",
+      "return",
+      "break",
+      "continue",
+      "true",
+      "false",
+      "null",
+      "in",
+      "of",
+      "export",
+      "import",
+      "from",
+      "as",
+      "public",
+      "private",
+      "readonly",
     ]);
     return keywords.has(text);
   }
@@ -424,10 +464,22 @@ export class FixSuggestionEngine {
     if (!text || text.length === 0) return [];
 
     const suggestions: Record<string, string[]> = {
-      "function": [`${text}Fn`, `handle${this.capitalize(text)}`, `process${this.capitalize(text)}`],
+      "function": [
+        `${text}Fn`,
+        `handle${this.capitalize(text)}`,
+        `process${this.capitalize(text)}`,
+      ],
       "variable": [`${text}Value`, `${text}Data`, `my${this.capitalize(text)}`],
-      "type": [`${this.capitalize(text)}Type`, `${this.capitalize(text)}Data`, `I${this.capitalize(text)}`],
-      "parameter": [`${text}Param`, `input${this.capitalize(text)}`, `${text}Arg`],
+      "type": [
+        `${this.capitalize(text)}Type`,
+        `${this.capitalize(text)}Data`,
+        `I${this.capitalize(text)}`,
+      ],
+      "parameter": [
+        `${text}Param`,
+        `input${this.capitalize(text)}`,
+        `${text}Arg`,
+      ],
     };
     return suggestions[context] || [];
   }
@@ -482,9 +534,12 @@ export class EnhancedErrorFactory {
     expectedDelimiter: string,
     openingDelimiter?: { token: Token; position: number },
   ): ParseError {
-    const delimiterText = FixSuggestionEngine["getDelimiterText"](expectedDelimiter);
+    const delimiterText = FixSuggestionEngine["getDelimiterText"](
+      expectedDelimiter,
+    );
     const message = openingDelimiter
-      ? `Missing '${delimiterText}' to match '${FixSuggestionEngine["getDelimiterText"](openingDelimiter.token.symbol)
+      ? `Missing '${delimiterText}' to match '${
+        FixSuggestionEngine["getDelimiterText"](openingDelimiter.token.symbol)
       }' at line ${openingDelimiter.token.span?.start?.line || 1}`
       : `Missing '${delimiterText}'`;
 
@@ -506,9 +561,12 @@ export class EnhancedErrorFactory {
     unmatchedToken: Token,
     expectedDelimiter?: string,
   ): ParseError {
-    const unmatchedText = FixSuggestionEngine["getDelimiterText"](unmatchedToken.symbol);
+    const unmatchedText = FixSuggestionEngine["getDelimiterText"](
+      unmatchedToken.symbol,
+    );
     const message = expectedDelimiter
-      ? `Unexpected '${unmatchedText}', expected '${FixSuggestionEngine["getDelimiterText"](expectedDelimiter)
+      ? `Unexpected '${unmatchedText}', expected '${
+        FixSuggestionEngine["getDelimiterText"](expectedDelimiter)
       }'`
       : `Unmatched '${unmatchedText}'`;
 
@@ -531,8 +589,9 @@ export class EnhancedErrorFactory {
     expectedContext?: string,
   ): ParseError {
     const tokenText = FixSuggestionEngine["getTokenText"](invalidToken);
-    const message = `Invalid identifier '${tokenText}'${expectedContext ? ` in ${expectedContext} context` : ""
-      }`;
+    const message = `Invalid identifier '${tokenText}'${
+      expectedContext ? ` in ${expectedContext} context` : ""
+    }`;
 
     return FixSuggestionEngine.createErrorWithFixes(
       DiagnosticCode.INVALID_SYNTAX,
@@ -553,8 +612,9 @@ export class EnhancedErrorFactory {
     actualContext: string,
     expectedContext?: string,
   ): ParseError {
-    const message = `Keyword '${keyword}' cannot be used in ${actualContext}${expectedContext ? `, expected ${expectedContext}` : ""
-      }`;
+    const message = `Keyword '${keyword}' cannot be used in ${actualContext}${
+      expectedContext ? `, expected ${expectedContext}` : ""
+    }`;
 
     return FixSuggestionEngine.createErrorWithFixes(
       DiagnosticCode.INVALID_SYNTAX,

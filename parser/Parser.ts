@@ -16,12 +16,12 @@ import { Identifier, Symbol, Token } from "../tokens/Token.ts";
 import { pipe, Pipeable, pipeArguments } from "./Pipeable.ts";
 import type { RecoveryStrategy } from "./ErrorRecovery.ts";
 import {
-  RecoveryPerformanceManager,
-  FastPathOptimizer,
-  BoundedRecoveryHistory,
   BoundedContextStack,
+  BoundedRecoveryHistory,
   DEFAULT_RECOVERY_PERFORMANCE_CONFIG,
+  FastPathOptimizer,
   type RecoveryPerformanceConfig,
+  RecoveryPerformanceManager,
 } from "./PerformanceOptimizations.ts";
 
 const EMPTY_SPAN = new Span(
@@ -44,7 +44,9 @@ export class ParserContext {
   ) {
     const config = performanceConfig ?? DEFAULT_RECOVERY_PERFORMANCE_CONFIG;
     this.contextStack = new BoundedContextStack(config.maxContextStackDepth);
-    this.recoveryHistory = new BoundedRecoveryHistory(config.maxRecoveryHistorySize);
+    this.recoveryHistory = new BoundedRecoveryHistory(
+      config.maxRecoveryHistorySize,
+    );
     this.performanceManager = new RecoveryPerformanceManager(config);
     this.fastPathOptimizer = new FastPathOptimizer();
   }
@@ -209,11 +211,11 @@ export class ParserContext {
   skipToSynchronizationPoint(predicate: SyncPredicate): void {
     // Activate recovery if not already active
     this.performanceManager.activateRecovery();
-    
+
     // Use predicate-based skipping with bounded limits to prevent infinite loops
     let tokensSkipped = 0;
     const maxSkip = 50; // Reasonable limit for synchronization
-    
+
     while (!this.isAtEnd() && tokensSkipped < maxSkip) {
       const token = this.peek();
       if (predicate(token, this)) {
@@ -241,13 +243,13 @@ export class ParserContext {
   addRecoveryError(error: ParseError, recoveryStrategy: string): void {
     // Activate recovery if not already active
     this.performanceManager.activateRecovery();
-    
+
     // Increment recovery attempts
     this.performanceManager.incrementRecoveryAttempts();
-    
+
     // Record error for fast path optimization
     this.fastPathOptimizer.recordError();
-    
+
     const recoveryEvent: RecoveryEvent = {
       strategy: recoveryStrategy,
       position: this.position,
@@ -258,7 +260,7 @@ export class ParserContext {
 
     this.recoveryHistory.addEvent(recoveryEvent);
     this.addFailure(error);
-    
+
     // Manage recovery history size to prevent memory bloat
     this.performanceManager.manageRecoveryHistory(this);
   }
@@ -268,7 +270,7 @@ export class ParserContext {
   }
 
   // Performance optimization methods
-  
+
   /**
    * Check if fast path parsing is enabled (no errors encountered)
    */
@@ -1441,7 +1443,7 @@ export function synchronize<T>(
 
       // Reached end of input or skip limit without finding sync point
       const syncFailureMessage = errorMessage ||
-        (tokensSkipped >= maxSkip 
+        (tokensSkipped >= maxSkip
           ? `Failed to synchronize: reached token skip limit (${maxSkip}) without finding sync point`
           : `Failed to synchronize: reached end of input after skipping ${tokensSkipped} tokens`);
 

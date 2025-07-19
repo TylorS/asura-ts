@@ -668,16 +668,19 @@ describe("Statement Parser", () => {
         const statements = [];
         while (!context.isAtEnd()) {
           // Skip whitespace
-          while (!context.isAtEnd() && 
-                 (context.peek().kind === "Whitespace" || context.peek().kind === "Newline")) {
+          while (
+            !context.isAtEnd() &&
+            (context.peek().kind === "Whitespace" ||
+              context.peek().kind === "Newline")
+          ) {
             context.consume();
           }
-          
+
           if (context.isAtEnd()) break;
-          
+
           const parser = statement();
           const result = parser.parse(context);
-          
+
           if (result.type === "success") {
             statements.push(result.value);
           } else {
@@ -689,11 +692,11 @@ describe("Statement Parser", () => {
 
         // Should have parsed at least some statements successfully
         expect(statements.length).toBeGreaterThan(0);
-        
+
         // Context should be properly managed
         expect(context.getCurrentContext()).toBeNull();
         expect(context.getContextStack()).toHaveLength(0);
-        
+
         // Recovery history should be available
         const recoveryHistory = context.getRecoveryHistory();
         expect(Array.isArray(recoveryHistory)).toBe(true);

@@ -20,7 +20,7 @@ import {
   typeParametersList,
   typeReference,
 } from "./Type.ts";
-import { pipe } from '../Pipeable'
+import { pipe } from '../Pipeable.ts'
 
 // Helper function to add parsing context tracking
 function withParsingContext<T>(

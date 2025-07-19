@@ -1,6 +1,7 @@
 import { Token } from "../tokens/Token.ts";
 import { DiagnosticCode, DiagnosticFix } from "../diagnostics/mod.ts";
 import { ParseError, ParseFailure, ParserContext } from "./Parser.ts";
+import { EnhancedErrorFactory } from "./FixSuggestions.ts";
 
 // Core recovery strategy interfaces
 export interface RecoveryStrategy {
@@ -137,24 +138,15 @@ export class DelimiterRecovery implements RecoveryStrategy {
         const expectedCloser = this.delimiterPairs.get(opener.symbol);
 
         if (expectedCloser) {
-          // Add diagnostic fix suggestion
-          const fix: DiagnosticFix = {
-            kind: "insert",
-            message: `Insert missing '${this.getSymbolText(expectedCloser)}'`,
-            span: context.span(),
-            replacement: this.getSymbolText(expectedCloser),
-          };
-
-          // Record the virtual token insertion
-          context.addRecoveryError(
-            ParseError.error(
-              DiagnosticCode.INSERTED_TOKEN,
-              `Inserted missing '${this.getSymbolText(expectedCloser)}'`,
-              context.span(),
-              [fix],
-            ),
-            this.name,
+          // Use enhanced error factory for better fix suggestions
+          const enhancedError = EnhancedErrorFactory.missingDelimiter(
+            context,
+            expectedCloser,
+            { token: context.tokens[opener.position], position: opener.position },
           );
+
+          // Record the enhanced error with intelligent fix suggestions
+          context.addRecoveryError(enhancedError, this.name);
 
           return {
             success: true,
@@ -435,26 +427,15 @@ export class KeywordRecovery implements RecoveryStrategy {
           );
 
           if (!isInCorrectContext) {
-            // Provide context-specific suggestion
-            const suggestion = this.keywordSuggestions.get(keyword) ||
-              `Keyword '${keyword}' may be in wrong context`;
-
-            const fix: DiagnosticFix = {
-              kind: "replace",
-              message: suggestion,
-              span: error.span,
-              replacement: "", // Context-dependent replacement
-            };
-
-            context.addRecoveryError(
-              ParseError.error(
-                DiagnosticCode.INVALID_SYNTAX,
-                `Misplaced keyword '${keyword}': ${suggestion}`,
-                error.span,
-                [fix],
-              ),
-              this.name,
+            // Use enhanced error factory for better fix suggestions
+            const enhancedError = EnhancedErrorFactory.wrongKeywordContext(
+              context,
+              keyword,
+              currentContext.name,
+              expectedContexts.join(" or "),
             );
+
+            context.addRecoveryError(enhancedError, this.name);
 
             // Skip the problematic keyword
             if (!context.isAtEnd() && context.peek().kind === keyword) {

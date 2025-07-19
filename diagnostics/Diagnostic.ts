@@ -46,6 +46,7 @@ export enum DiagnosticCode {
   INCOMPLETE_FUNCTION = "P103",
   RECOVERED_ERROR = "P104",
   SYNC_FAILED = "P105",
+  PARSER_LIMIT_EXCEEDED = "P106",
 
   // Semantic errors (for future)
   UNDEFINED_IDENTIFIER = "S001",

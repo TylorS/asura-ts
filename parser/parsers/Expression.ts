@@ -137,6 +137,15 @@ export function literals() {
 export function regexLiteral(): Parser.Parser<AST.RegexLiteral> {
   return {
     parse(context: Parser.ParserContext): Parser.ParseResult<AST.RegexLiteral> {
+      // Check if we're at end of input
+      if (context.isAtEnd()) {
+        return Parser.ParseFailure.error(
+          DiagnosticCode.UNEXPECTED_TOKEN,
+          "Expected '/' but reached end of input",
+          context.span(),
+        );
+      }
+
       const startToken = context.peek();
       const startSpan = startToken.span;
 

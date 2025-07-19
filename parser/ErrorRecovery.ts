@@ -6,8 +6,8 @@ import { EnhancedErrorFactory } from "./FixSuggestions.ts";
 // Core recovery strategy interfaces
 export interface RecoveryStrategy {
   name: string;
-  canRecover(context: ParserContext, failure: ParseFailure): boolean;
-  recover(context: ParserContext, failure: ParseFailure): RecoveryResult;
+  canRecover<T>(context: ParserContext, failure: ParseFailure<T>): boolean;
+  recover<T>(context: ParserContext, failure: ParseFailure<T>): RecoveryResult;
 }
 
 export interface RecoveryResult {
@@ -26,12 +26,12 @@ export interface RecoveryResult {
 export class StatementBoundaryRecovery implements RecoveryStrategy {
   readonly name = "StatementBoundaryRecovery";
 
-  canRecover(context: ParserContext, failure: ParseFailure): boolean {
+  canRecover<T>(context: ParserContext, failure: ParseFailure<T>): boolean {
     // Can recover if we're not at the end and there are tokens to skip
     return !context.isAtEnd() && context.getTokensRemaining() > 0;
   }
 
-  recover(context: ParserContext, failure: ParseFailure): RecoveryResult {
+  recover<T>(context: ParserContext, failure: ParseFailure<T>): RecoveryResult {
     const startPosition = context.getPosition();
     let tokensSkipped = 0;
 
@@ -88,7 +88,7 @@ export class DelimiterRecovery implements RecoveryStrategy {
     "CloseBracket",
   ]);
 
-  canRecover(context: ParserContext, failure: ParseFailure): boolean {
+  canRecover<T>(context: ParserContext, failure: ParseFailure<T>): boolean {
     // Check if the failure involves delimiter-related errors
     return failure.errors.some((error) =>
       error.code === DiagnosticCode.UNCLOSED_DELIMITER ||
@@ -100,7 +100,7 @@ export class DelimiterRecovery implements RecoveryStrategy {
     );
   }
 
-  recover(context: ParserContext, failure: ParseFailure): RecoveryResult {
+  recover<T>(context: ParserContext, failure: ParseFailure<T>): RecoveryResult {
     const startPosition = context.getPosition();
     let tokensSkipped = 0;
     const virtualTokensInserted: Token[] = [];
@@ -311,7 +311,7 @@ export class ExpressionRecovery implements RecoveryStrategy {
     "Arrow",
   ]);
 
-  canRecover(context: ParserContext, failure: ParseFailure): boolean {
+  canRecover<T>(context: ParserContext, failure: ParseFailure<T>): boolean {
     // Can recover if we're in an expression context and not at the end
     const currentContext = context.getCurrentContext();
     return !context.isAtEnd() && (
@@ -325,7 +325,7 @@ export class ExpressionRecovery implements RecoveryStrategy {
     );
   }
 
-  recover(context: ParserContext, failure: ParseFailure): RecoveryResult {
+  recover<T>(context: ParserContext, failure: ParseFailure<T>): RecoveryResult {
     const startPosition = context.getPosition();
     let tokensSkipped = 0;
 
@@ -400,7 +400,7 @@ export class KeywordRecovery implements RecoveryStrategy {
     ["match", "Use 'match' for pattern matching: match value { ... }"],
   ]);
 
-  canRecover(context: ParserContext, failure: ParseFailure): boolean {
+  canRecover<T>(context: ParserContext, failure: ParseFailure<T>): boolean {
     // Check if the failure involves keyword-related errors
     return failure.errors.some((error) =>
       error.actualToken?.kind && this.isKeyword(error.actualToken.kind) ||
@@ -412,7 +412,7 @@ export class KeywordRecovery implements RecoveryStrategy {
     );
   }
 
-  recover(context: ParserContext, failure: ParseFailure): RecoveryResult {
+  recover<T>(context: ParserContext, failure: ParseFailure<T>): RecoveryResult {
     let tokensSkipped = 0;
     const virtualTokensInserted: Token[] = [];
 

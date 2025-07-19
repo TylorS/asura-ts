@@ -22,10 +22,13 @@ export class FixSuggestionEngine {
 
     if (openingDelimiter) {
       // We have an opening delimiter, suggest closing at current position
+      const openingSymbol = openingDelimiter.token.kind === "Symbol"
+        ? openingDelimiter.token.symbol
+        : openingDelimiter.token.kind;
       fixes.push({
         kind: "insert",
         message: `Insert missing '${delimiterText}' to match '${
-          this.getDelimiterText(openingDelimiter.token.symbol)
+          this.getDelimiterText(openingSymbol)
         }' at line ${openingDelimiter.token.span?.start?.line || 1}`,
         span: span,
         replacement: delimiterText,
@@ -66,7 +69,10 @@ export class FixSuggestionEngine {
     expectedDelimiter?: string,
   ): DiagnosticFix[] {
     const fixes: DiagnosticFix[] = [];
-    const unmatchedText = this.getDelimiterText(unmatchedToken.symbol);
+    const unmatchedSymbol = unmatchedToken.kind === "Symbol"
+      ? unmatchedToken.symbol
+      : unmatchedToken.kind;
+    const unmatchedText = this.getDelimiterText(unmatchedSymbol);
 
     if (expectedDelimiter) {
       const expectedText = this.getDelimiterText(expectedDelimiter);
@@ -91,7 +97,7 @@ export class FixSuggestionEngine {
     } else {
       // Find potential matching delimiter
       const matchingDelimiter = this.findMatchingDelimiter(
-        unmatchedToken.symbol,
+        unmatchedSymbol,
       );
       if (matchingDelimiter) {
         const matchingText = this.getDelimiterText(matchingDelimiter);
@@ -539,7 +545,11 @@ export class EnhancedErrorFactory {
     );
     const message = openingDelimiter
       ? `Missing '${delimiterText}' to match '${
-        FixSuggestionEngine["getDelimiterText"](openingDelimiter.token.symbol)
+        FixSuggestionEngine["getDelimiterText"](
+          openingDelimiter.token.kind === "Symbol"
+            ? openingDelimiter.token.symbol
+            : openingDelimiter.token.kind,
+        )
       }' at line ${openingDelimiter.token.span?.start?.line || 1}`
       : `Missing '${delimiterText}'`;
 
@@ -561,8 +571,11 @@ export class EnhancedErrorFactory {
     unmatchedToken: Token,
     expectedDelimiter?: string,
   ): ParseError {
+    const unmatchedSymbol = unmatchedToken.kind === "Symbol"
+      ? unmatchedToken.symbol
+      : unmatchedToken.kind;
     const unmatchedText = FixSuggestionEngine["getDelimiterText"](
-      unmatchedToken.symbol,
+      unmatchedSymbol,
     );
     const message = expectedDelimiter
       ? `Unexpected '${unmatchedText}', expected '${

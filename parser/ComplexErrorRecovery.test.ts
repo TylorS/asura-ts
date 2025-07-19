@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import * as AST from "../ast/mod.ts";
 import { DiagnosticCode, DiagnosticCollection } from "../diagnostics/mod.ts";
 import { tokenizeToArray } from "../tokens/Tokenizer.ts";
 import { Span, SpanLocation } from "../tokens/Span.ts";
@@ -8,12 +7,12 @@ import {
   ParseFailure,
   ParserContext,
   ParseResult,
-  ParseSuccess,
   PartialNode,
   RecoveredNode,
 } from "./Parser.ts";
 import { expression, expressionWithRecovery } from "./parsers/Expression.ts";
-import { block, statement } from "./parsers/Statement.ts";
+import { statement } from "./parsers/Statement.ts";
+import { pipe } from "./Pipeable.ts";
 
 const EMPTY_SPAN = new Span(
   new SpanLocation(1, 1, 0),
@@ -305,7 +304,10 @@ describe("Complex Error Recovery Scenarios", () => {
           // Try to recover by skipping to next statement boundary
           while (!context.isAtEnd()) {
             const token = context.peek();
-            if (token.kind === "Newline" || token.kind === "Semicolon") {
+            if (
+              token.kind === "Newline" ||
+              (token.kind === "Symbol" && token.symbol === "Semicolon")
+            ) {
               context.consume();
               break;
             }
@@ -352,7 +354,7 @@ describe("Complex Error Recovery Scenarios", () => {
       // Test recoverableSeq combinator directly
       const parser = Parser.recoverableSeq(
         Parser.token("Identifier"), // Should succeed on "incomplete"
-        Parser.token("Number"), // Should fail on "sequence"
+        Parser.token("IntegerLiteral"), // Should fail on "sequence"
         Parser.token("Symbol"), // Should fail - no symbol present
       );
 
@@ -380,9 +382,9 @@ describe("Complex Error Recovery Scenarios", () => {
 
       // Test or combinator with recovery
       const parser = Parser.or(
-        Parser.token("Number"),
-        Parser.token("String"),
-        Parser.token("Boolean"),
+        Parser.token("IntegerLiteral"),
+        Parser.token("StringLiteral"),
+        Parser.token("BooleanLiteral"),
       );
 
       const result = parser.parse(context);
@@ -481,8 +483,8 @@ describe("Complex Error Recovery Scenarios", () => {
       // Test optional combinator with recovery
       const parser = Parser.seq(
         Parser.token("Identifier"), // Should succeed
-        Parser.optional(Parser.token("Number")), // Should succeed with null
-        Parser.optional(Parser.token("String")), // Should succeed with null
+        Parser.optional(Parser.token("IntegerLiteral")), // Should succeed with null
+        Parser.optional(Parser.token("StringLiteral")), // Should succeed with null
       );
 
       const result = parser.parse(context);
@@ -503,7 +505,7 @@ describe("Complex Error Recovery Scenarios", () => {
       // Test zeroOrMore with recovery
       const itemParser = Parser.or(
         Parser.token("Identifier"),
-        Parser.token("Number"),
+        Parser.token("IntegerLiteral"),
       );
 
       const parser = Parser.zeroOrMore(itemParser);
@@ -565,7 +567,7 @@ describe("Complex Error Recovery Scenarios", () => {
 
       // Test synchronize combinator that looks for semicolon (which doesn't exist)
       const parser = Parser.synchronize(
-        Parser.token("Number"), // This will fail
+        Parser.token("IntegerLiteral"), // This will fail
         (token) => token.kind === "Symbol" && token.symbol === "Semicolon",
       );
 
@@ -594,8 +596,8 @@ describe("Complex Error Recovery Scenarios", () => {
 
       const parser = Parser.recoverableSeq(
         Parser.token("Identifier"), // Should succeed
-        Parser.token("Number"), // Should fail - no more tokens
-        Parser.token("String"), // Should fail - no more tokens
+        Parser.token("IntegerLiteral"), // Should fail - no more tokens
+        Parser.token("StringLiteral"), // Should fail - no more tokens
       );
 
       const result = parser.parse(context);
@@ -726,7 +728,7 @@ describe("Complex Error Recovery Scenarios", () => {
           );
           return new ParseFailure([error], partialResult);
         },
-        pipe: Parser.pipe,
+        pipe,
       };
 
       const result = parser.parse(context);

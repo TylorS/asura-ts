@@ -1,16 +1,12 @@
 import { describe, expect, it } from "vitest";
 import * as AST from "../ast/mod.ts";
-import {
-  DiagnosticCode,
-  DiagnosticCollection,
-  DiagnosticSeverity,
-} from "../diagnostics/mod.ts";
+import { DiagnosticCollection } from "../diagnostics/mod.ts";
 import { tokenizeToArray } from "../tokens/Tokenizer.ts";
-import { ParserContext, ParseResult, ParseSuccess } from "./Parser.ts";
+import { ParserContext, ParseResult } from "./Parser.ts";
 import { sourceFile } from "./parsers/SourceFile.ts";
 import { statement } from "./parsers/Statement.ts";
-import { expression } from "./parsers/Expression.ts";
 import * as Parser from "./Parser.ts";
+import { Symbol } from "../tokens/Token.ts";
 
 /**
  * Integration tests for full source file parsing with error recovery
@@ -118,7 +114,7 @@ function testRecoveryCombinators(): void {
   const syncSource = "invalid tokens here; valid";
   const syncContext = createParserContext(syncSource);
   const syncParser = Parser.synchronize(
-    Parser.token("Number"),
+    Parser.token("IntegerLiteral"),
     (token) => token.kind === "Symbol" && token.symbol === "Semicolon",
   );
   const syncResult = syncParser.parse(syncContext);
@@ -133,7 +129,7 @@ function testRecoveryCombinators(): void {
   const seqContext = createParserContext(seqSource);
   const seqParser = Parser.recoverableSeq(
     Parser.token("Identifier"),
-    Parser.token("Number"),
+    Parser.token("IntegerLiteral"),
     Parser.token("Identifier"),
   );
   const seqResult = seqParser.parse(seqContext);
@@ -180,7 +176,7 @@ describe("Source File Error Recovery Integration Tests", () => {
       const syncSource = "invalid tokens here; valid";
       const syncContext = createParserContext(syncSource);
       const syncParser = Parser.synchronize(
-        Parser.token("Number"), // This will fail
+        Parser.token("IntegerLiteral"), // This will fail
         (token) => token.kind === "Symbol" && token.symbol === "Semicolon",
       );
       const syncResult = syncParser.parse(syncContext);
@@ -192,7 +188,7 @@ describe("Source File Error Recovery Integration Tests", () => {
 
       // Should be positioned at semicolon
       expect(syncContext.peek().kind).toBe("Symbol");
-      expect(syncContext.peek().symbol).toBe("Semicolon");
+      expect((syncContext.peek() as Symbol).symbol).toBe("Semicolon");
     });
 
     it("should test recoverableSeq combinator with partial success", () => {
@@ -200,7 +196,7 @@ describe("Source File Error Recovery Integration Tests", () => {
       const seqContext = createParserContext(seqSource);
       const seqParser = Parser.recoverableSeq(
         Parser.token("Identifier"), // Should succeed
-        Parser.token("Number"), // Should fail on "invalid"
+        Parser.token("IntegerLiteral"), // Should fail on "invalid"
         Parser.token("Identifier"), // Should succeed on "valid"
       );
       const seqResult = seqParser.parse(seqContext);
@@ -340,14 +336,14 @@ describe("Source File Error Recovery Integration Tests", () => {
       // Find the calculateSum function
       const calcSumFunc = statements.find((stmt) =>
         stmt instanceof AST.FunctionDeclaration &&
-        (stmt as AST.FunctionDeclaration).name.name === "calculateSum"
+        (stmt as AST.FunctionDeclaration).name.text === "calculateSum"
       ) as AST.FunctionDeclaration;
 
       if (calcSumFunc) {
         // Verify function structure is correct
         expect(calcSumFunc.parameters.length).toBe(2);
-        expect(calcSumFunc.parameters[0].name.name).toBe("x");
-        expect(calcSumFunc.parameters[1].name.name).toBe("y");
+        expect(calcSumFunc.parameters[0].name.text).toBe("x");
+        expect(calcSumFunc.parameters[1].name.text).toBe("y");
       }
 
       // Should have let declarations

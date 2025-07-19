@@ -174,7 +174,7 @@ describe("recoverableSeq combinator (with whitespace handling)", () => {
     it("should mark failed elements as null and continue parsing", () => {
       const tokens = [
         createToken("Identifier", "hello"),
-        createToken("Number", "123"), // This will cause second parser to fail (Number is not whitespace)
+        createToken("IntegerLiteral", "123"), // This will cause second parser to fail (IntegerLiteral is not whitespace)
         createToken("Identifier", "world"),
       ];
       const context = createContext(tokens);
@@ -266,7 +266,7 @@ describe("recoverableSeq combinator (with whitespace handling)", () => {
     it("should reset position correctly after failed parsers", () => {
       const tokens = [
         createToken("Identifier", "first"),
-        createToken("Number", "123"), // This will cause second parser to fail
+        createToken("IntegerLiteral", "123"), // This will cause second parser to fail
         createToken("Identifier", "third"),
       ];
       const context = createContext(tokens);
@@ -295,7 +295,7 @@ describe("recoverableSeq combinator (with whitespace handling)", () => {
     it("should add recovery information for each failed element", () => {
       const tokens = [
         createToken("Identifier", "success"),
-        createToken("Number", "123"), // This will cause second parser to fail
+        createToken("IntegerLiteral", "123"), // This will cause second parser to fail
         createToken("Identifier", "success2"),
       ];
       const context = createContext(tokens);
@@ -321,8 +321,8 @@ describe("recoverableSeq combinator (with whitespace handling)", () => {
     it("should handle multiple consecutive failures", () => {
       const tokens = [
         createToken("Identifier", "success"),
-        createToken("Number", "123"), // This will cause second parser to fail
-        createToken("Number", "456"), // This will cause third parser to fail
+        createToken("IntegerLiteral", "123"), // This will cause second parser to fail
+        createToken("IntegerLiteral", "456"), // This will cause third parser to fail
         createToken("Identifier", "success2"),
       ];
       const context = createContext(tokens);
@@ -481,7 +481,7 @@ describe("recoverableSeq combinator (with whitespace handling)", () => {
     it("should skip whitespace after failed elements", () => {
       const tokens = [
         createToken("Identifier", "first"),
-        createToken("Number", "123"), // This will cause second parser to fail
+        createToken("IntegerLiteral", "123"), // This will cause second parser to fail
         createToken("Whitespace", " "),
         createToken("Identifier", "third"),
       ];

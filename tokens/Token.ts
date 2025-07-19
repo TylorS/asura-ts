@@ -272,7 +272,8 @@ export class StringLiteral extends Spanned<"StringLiteral"> {
 
 // Symbols
 
-export class Symbol<T extends SymbolKind> extends Spanned<"Symbol"> {
+export class Symbol<T extends SymbolKind = SymbolKind>
+  extends Spanned<"Symbol"> {
   constructor(
     readonly symbol: T,
     readonly text: (typeof SYMBOLS)[T],

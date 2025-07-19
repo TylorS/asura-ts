@@ -8,6 +8,8 @@ import {
   SyncPredicate,
   token,
 } from "./Parser.ts";
+import { Symbol } from "../tokens/Token.ts";
+import { SymbolKind } from "../tokens/Symbols.ts";
 
 function createParserContext(source: string): ParserContext {
   const tokens = tokenizeToArray(source);
@@ -45,7 +47,7 @@ describe("synchronize combinator integration", () => {
 
     // Should be positioned at the semicolon
     expect(context.peek().kind).toBe("Symbol");
-    expect(context.peek().symbol).toBe("Semicolon");
+    expect((context.peek() as Symbol<SymbolKind>).symbol).toBe("Semicolon");
 
     // Should have recovery diagnostic
     const diagnostics = context.diagnostics.getAll();
@@ -129,7 +131,8 @@ describe("synchronize combinator integration", () => {
 
     // Should be positioned at the opening brace
     expect(context.peek().kind).toBe("Symbol");
-    expect(context.peek().symbol).toBe("OpenBrace");
+
+    expect((context.peek() as Symbol<SymbolKind>).symbol).toBe("OpenBrace");
   });
 
   it("should preserve error information from original parser", () => {

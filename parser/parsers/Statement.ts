@@ -1,13 +1,8 @@
 import * as AST from "../../ast/mod.ts";
-import { Span, SpanLocation } from "../../tokens/Span.ts";
+import { Span } from "../../tokens/Span.ts";
 import { AsKeyword } from "../../tokens/Token.ts";
 import { DiagnosticCode } from "../../diagnostics/mod.ts";
 import * as Parser from "../Parser.ts";
-import {
-  DelimiterRecovery,
-  KeywordRecovery,
-  StatementBoundaryRecovery,
-} from "../ErrorRecovery.ts";
 import {
   expression,
   functionParameter,
@@ -94,6 +89,7 @@ export function statement(): Parser.Parser<AST.Statement> {
           }
           return result as Parser.ParseResult<AST.Statement>;
         },
+        pipe,
       }),
       withStatementTerminator,
     ),

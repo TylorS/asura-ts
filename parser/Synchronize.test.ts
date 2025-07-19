@@ -1,15 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DiagnosticCode, DiagnosticCollection } from "../diagnostics/mod.ts";
 import { Span, SpanLocation } from "../tokens/Span.ts";
-import { Token } from "../tokens/Token.ts";
-import {
-  ParseFailure,
-  ParserContext,
-  ParseSuccess,
-  synchronize,
-  SyncPredicate,
-  token,
-} from "./Parser.ts";
+import { Symbol, Token } from "../tokens/Token.ts";
+import { ParserContext, synchronize, SyncPredicate, token } from "./Parser.ts";
 
 // Helper function to create test tokens
 function createToken(
@@ -26,7 +19,7 @@ function createToken(
   if (kind === "Identifier") {
     return { kind, text, span } as Token;
   } else if (kind === "Symbol") {
-    return { kind, symbol: text as any, span } as Token;
+    return { kind, symbol: text, span } as Token;
   } else {
     return { kind, span } as Token;
   }
@@ -49,7 +42,7 @@ describe("synchronize combinator", () => {
     const result = syncParser.parse(context);
 
     expect(result.type).toBe("success");
-    if (result.type === "success") {
+    if (result.type === "success" && result.value) {
       expect(result.value.kind).toBe("Identifier");
       expect(result.value.text).toBe("test");
     }
@@ -65,7 +58,7 @@ describe("synchronize combinator", () => {
     const context = createContext(tokens);
 
     // Try to parse a number but we have an identifier
-    const numberParser = token("Number");
+    const numberParser = token("IntegerLiteral");
     const syncPredicate: SyncPredicate = (token) => token.kind === "Newline";
     const syncParser = synchronize(numberParser, syncPredicate);
 
@@ -91,7 +84,7 @@ describe("synchronize combinator", () => {
     ];
     const context = createContext(tokens);
 
-    const numberParser = token("Number");
+    const numberParser = token("IntegerLiteral");
     const syncPredicate: SyncPredicate = (token) =>
       token.kind === "Symbol" && token.symbol === "Semicolon";
     const syncParser = synchronize(numberParser, syncPredicate);
@@ -105,7 +98,7 @@ describe("synchronize combinator", () => {
 
     // Should be positioned at the semicolon
     expect(context.peek().kind).toBe("Symbol");
-    expect(context.peek().symbol).toBe("Semicolon");
+    expect((context.peek() as Symbol).symbol).toBe("Semicolon");
   });
 
   it("should fail when reaching end of input without finding sync point", () => {
@@ -116,7 +109,7 @@ describe("synchronize combinator", () => {
     ];
     const context = createContext(tokens);
 
-    const numberParser = token("Number");
+    const numberParser = token("IntegerLiteral");
     const syncPredicate: SyncPredicate = (token) => token.kind === "Newline";
     const syncParser = synchronize(numberParser, syncPredicate);
 
@@ -163,7 +156,7 @@ describe("synchronize combinator", () => {
     ];
     const context = createContext(tokens);
 
-    const numberParser = token("Number");
+    const numberParser = token("IntegerLiteral");
     const syncPredicate: SyncPredicate = (token) => token.kind === "Newline";
     const customMessage = "Custom sync failure message";
     const syncParser = synchronize(numberParser, syncPredicate, customMessage);
@@ -188,7 +181,7 @@ describe("synchronize combinator", () => {
     ];
     const context = createContext(tokens);
 
-    const numberParser = token("Number");
+    const numberParser = token("IntegerLiteral");
     const syncPredicate: SyncPredicate = (token) => token.kind === "Newline";
     const syncParser = synchronize(numberParser, syncPredicate);
 
@@ -217,10 +210,10 @@ describe("synchronize combinator", () => {
     ];
     const context = createContext(tokens);
 
-    const numberParser = token("Number");
+    const numberParser = token("IntegerLiteral");
 
     // Complex predicate: match closing brace or semicolon
-    const syncPredicate: SyncPredicate = (token, context) => {
+    const syncPredicate: SyncPredicate = (token) => {
       return token.kind === "Symbol" &&
         (token.symbol === "CloseBrace" || token.symbol === "Semicolon");
     };
@@ -236,7 +229,7 @@ describe("synchronize combinator", () => {
 
     // Should be positioned at the closing brace
     expect(context.peek().kind).toBe("Symbol");
-    expect(context.peek().symbol).toBe("CloseBrace");
+    expect((context.peek() as Symbol).symbol).toBe("CloseBrace");
   });
 
   it("should preserve original parser position on success", () => {
@@ -256,7 +249,7 @@ describe("synchronize combinator", () => {
 
     // Position should be after the consumed identifier
     expect(context.peek().kind).toBe("Symbol");
-    expect(context.peek().symbol).toBe("Plus");
+    expect((context.peek() as Symbol).symbol).toBe("Plus");
   });
 
   it("should handle sync predicate that uses context information", () => {
@@ -271,12 +264,12 @@ describe("synchronize combinator", () => {
     // Add some parsing context
     context.pushParsingContext({
       name: "test-context",
-      expectedElements: ["Number"],
+      expectedElements: ["IntegerLiteral"],
       recoveryStrategies: ["sync"],
       metadata: {},
     });
 
-    const numberParser = token("Number");
+    const numberParser = token("IntegerLiteral");
 
     // Predicate that uses context information
     const syncPredicate: SyncPredicate = (token, ctx) => {
@@ -297,6 +290,6 @@ describe("synchronize combinator", () => {
 
     // Should be positioned at the closing brace
     expect(context.peek().kind).toBe("Symbol");
-    expect(context.peek().symbol).toBe("CloseBrace");
+    expect((context.peek() as Symbol).symbol).toBe("CloseBrace");
   });
 });

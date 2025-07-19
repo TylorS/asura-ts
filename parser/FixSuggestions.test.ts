@@ -4,6 +4,7 @@ import { Span, SpanLocation } from "../tokens/Span.ts";
 import { DiagnosticCode, DiagnosticCollection } from "../diagnostics/mod.ts";
 import { ParserContext } from "./Parser.ts";
 import { EnhancedErrorFactory, FixSuggestionEngine } from "./FixSuggestions.ts";
+import { SymbolKind, SYMBOLS } from "../tokens/Symbols.ts";
 
 // Helper function to create a test span
 function createSpan(line: number, col: number): Span {
@@ -19,9 +20,8 @@ function createSymbol(
   col: number = 1,
 ): Symbol {
   const span = createSpan(line, col);
-  const token = new Symbol(symbol as any, span);
-  // Ensure the span is properly set
-  (token as any).span = span;
+  const kind = symbol as SymbolKind;
+  const token = new Symbol(kind, SYMBOLS[kind], span);
   return token;
 }
 

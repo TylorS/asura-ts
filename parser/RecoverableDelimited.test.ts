@@ -297,7 +297,7 @@ describe("recoverableDelimited combinator", () => {
     it("should handle failed content parsing and continue with closing delimiter", () => {
       const tokens = [
         createToken("Symbol", "OpenParen"),
-        createToken("Number", "123"), // Wrong token type for content
+        createToken("IntegerLiteral", "123"), // Wrong token type for content
         createToken("Symbol", "CloseParen"),
       ];
       const context = createContext(tokens);
@@ -329,7 +329,7 @@ describe("recoverableDelimited combinator", () => {
     it("should skip problematic tokens when content parsing fails", () => {
       const tokens = [
         createToken("Symbol", "OpenParen"),
-        createToken("Number", "123"), // Wrong token type
+        createToken("IntegerLiteral", "123"), // Wrong token type
         createToken("Identifier", "extra"), // Extra token to skip
         createToken("Symbol", "CloseParen"),
       ];
@@ -355,9 +355,9 @@ describe("recoverableDelimited combinator", () => {
   describe("Complete failure scenarios", () => {
     it("should fail when no part can be parsed", () => {
       const tokens = [
-        createToken("Number", "123"), // Wrong for opening
-        createToken("Number", "456"), // Wrong for content
-        createToken("Number", "789"), // Wrong for closing
+        createToken("IntegerLiteral", "123"), // Wrong for opening
+        createToken("IntegerLiteral", "456"), // Wrong for content
+        createToken("IntegerLiteral", "789"), // Wrong for closing
       ];
       const context = createContext(tokens);
 
@@ -575,7 +575,7 @@ describe("recoverableDelimited combinator", () => {
     it("should maintain correct types for nullable fields", () => {
       const tokens = [
         createToken("Symbol", "OpenParen"),
-        createToken("Number", "123"), // Wrong type for content
+        createToken("IntegerLiteral", "123"), // Wrong type for content
         createToken("Symbol", "CloseParen"),
       ];
       const context = createContext(tokens);

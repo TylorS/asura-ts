@@ -6,6 +6,7 @@ import * as Parser from "./Parser.ts";
 import { ParserContext, ParseResult, ParseSuccess } from "./Parser.ts";
 import { expression, expressionWithRecovery } from "./parsers/Expression.ts";
 import { block, statement } from "./parsers/Statement.ts";
+import { Symbol } from "../tokens/Token.ts";
 
 function createParserContext(source: string): ParserContext {
   const tokens = tokenizeToArray(source);
@@ -105,7 +106,7 @@ describe("Basic Error Recovery Scenarios", () => {
 
       // Use synchronize combinator to skip to semicolon
       const parser = Parser.synchronize(
-        Parser.token("Number"), // This will fail
+        Parser.token("IntegerLiteral"), // This will fail
         (token) => token.kind === "Symbol" && token.symbol === "Semicolon",
       );
 
@@ -119,7 +120,7 @@ describe("Basic Error Recovery Scenarios", () => {
 
       // Should be positioned at semicolon
       expect(context.peek().kind).toBe("Symbol");
-      expect(context.peek().symbol).toBe("Semicolon");
+      expect((context.peek() as Symbol).symbol).toBe("Semicolon");
 
       // Should have recovery diagnostics
       const diagnostics = context.diagnostics.getAll();
@@ -137,7 +138,7 @@ describe("Basic Error Recovery Scenarios", () => {
       // Use recoverable sequence combinator
       const parser = Parser.recoverableSeq(
         Parser.token("Identifier"), // Should succeed
-        Parser.token("Number"), // Should fail on "invalid"
+        Parser.token("IntegerLiteral"), // Should fail on "invalid"
         Parser.token("Identifier"), // Should succeed on "valid"
       );
 
@@ -591,7 +592,10 @@ describe("Basic Error Recovery Scenarios", () => {
           // Try to recover by skipping to next statement boundary
           while (!context.isAtEnd()) {
             const token = context.peek();
-            if (token.kind === "Newline" || token.kind === "Semicolon") {
+            if (
+              token.kind === "Newline" ||
+              (token.kind === "Symbol" && token.symbol === "Semicolon")
+            ) {
               context.consume();
               break;
             }

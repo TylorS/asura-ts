@@ -5,7 +5,12 @@ import {
   formatDiagnostics,
 } from "../../diagnostics/mod.ts";
 import { tokenizeToArray } from "../../tokens/Tokenizer.ts";
-import { ParserContext, ParseResult, ParseSuccess } from "../Parser.ts";
+import {
+  ParseFailure,
+  ParserContext,
+  ParseResult,
+  ParseSuccess,
+} from "../Parser.ts";
 import {
   block,
   breakStatement,
@@ -38,6 +43,12 @@ function assertSuccess<T>(
 
     throw e;
   }
+}
+
+function assertFailure<T>(
+  result: ParseResult<T>,
+): asserts result is ParseFailure {
+  expect(result.type).toBe("failure");
 }
 
 describe("Statement Parser", () => {
@@ -568,7 +579,7 @@ describe("Statement Parser", () => {
       it("should track context for function declarations", () => {
         const context = createParserContext("fun test(): Int = 42");
         const parser = statement();
-        const result = parser.parse(context);
+        parser.parse(context);
 
         // Function may fail due to missing body syntax, but context should still be managed
         expect(context.getCurrentContext()).toBeNull();
@@ -640,6 +651,7 @@ describe("Statement Parser", () => {
         const parser = statement();
         const result = parser.parse(context);
 
+        assertFailure(result);
         expect(result.errors.length).toBeGreaterThan(0);
 
         // Check that at least one error has enhanced information

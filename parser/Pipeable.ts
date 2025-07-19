@@ -566,44 +566,44 @@ export interface Pipeable {
  * console.log(result) // 21
  * ```
  */
+// Lookup table for common pipe lengths (0-9 args)
+const pipeLookup = [
+  // 0 args
+  <A>(self: A, _args: IArguments): A => self,
+  // 1 arg
+  <A>(self: A, args: IArguments): unknown => args[0](self),
+  // 2 args
+  <A>(self: A, args: IArguments): unknown => args[1](args[0](self)),
+  // 3 args
+  <A>(self: A, args: IArguments): unknown => args[2](args[1](args[0](self))),
+  // 4 args
+  <A>(self: A, args: IArguments): unknown => args[3](args[2](args[1](args[0](self)))),
+  // 5 args
+  <A>(self: A, args: IArguments): unknown => args[4](args[3](args[2](args[1](args[0](self))))),
+  // 6 args
+  <A>(self: A, args: IArguments): unknown => args[5](args[4](args[3](args[2](args[1](args[0](self)))))),
+  // 7 args
+  <A>(self: A, args: IArguments): unknown => args[6](args[5](args[4](args[3](args[2](args[1](args[0](self))))))),
+  // 8 args
+  <A>(self: A, args: IArguments): unknown => args[7](args[6](args[5](args[4](args[3](args[2](args[1](args[0](self)))))))),
+  // 9 args
+  <A>(self: A, args: IArguments): unknown => args[8](args[7](args[6](args[5](args[4](args[3](args[2](args[1](args[0](self))))))))),
+];
+
 export const pipeArguments = <A>(self: A, args: IArguments): unknown => {
-  switch (args.length) {
-    case 0:
-      return self;
-    case 1:
-      return args[0](self);
-    case 2:
-      return args[1](args[0](self));
-    case 3:
-      return args[2](args[1](args[0](self)));
-    case 4:
-      return args[3](args[2](args[1](args[0](self))));
-    case 5:
-      return args[4](args[3](args[2](args[1](args[0](self)))));
-    case 6:
-      return args[5](args[4](args[3](args[2](args[1](args[0](self))))));
-    case 7:
-      return args[6](
-        args[5](args[4](args[3](args[2](args[1](args[0](self)))))),
-      );
-    case 8:
-      return args[7](
-        args[6](args[5](args[4](args[3](args[2](args[1](args[0](self))))))),
-      );
-    case 9:
-      return args[8](
-        args[7](
-          args[6](args[5](args[4](args[3](args[2](args[1](args[0](self))))))),
-        ),
-      );
-    default: {
-      let ret = self;
-      for (let i = 0, len = args.length; i < len; i++) {
-        ret = args[i](ret);
-      }
-      return ret;
-    }
+  const len = args.length;
+
+  // Use lookup table for common cases (0-9 args)
+  if (len < pipeLookup.length) {
+    return pipeLookup[len](self, args);
   }
+
+  // Fallback to loop for longer pipes
+  let ret = self;
+  for (let i = 0; i < len; i++) {
+    ret = args[i](ret);
+  }
+  return ret;
 };
 
 export function pipe<T>(this: T) {

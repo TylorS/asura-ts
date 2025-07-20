@@ -17,6 +17,9 @@ import { Identifier } from "../Identifer.ts";
 import { UnaryExpression } from "./UnaryExpression.ts";
 import { PropertyAccess } from "./PropertyAccess.ts";
 import { IndexAccess } from "./IndexAccess.ts";
+import { HandlerExpression } from "./HandlerExpression.ts";
+import { EffectOperation } from "../Statement/EffectOperation.ts";
+import { ResumeExpression } from "./ResumeExpression.ts";
 
 export type Literal =
   | ArrayLiteral
@@ -38,4 +41,7 @@ export type Expression =
   | CallExpression
   | UnaryExpression
   | PropertyAccess
-  | IndexAccess;
+  | IndexAccess
+  | HandlerExpression
+  | EffectOperation
+  | ResumeExpression;

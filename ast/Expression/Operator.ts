@@ -23,6 +23,8 @@ export type Operator =
   | "/="
   | "%="
   | "**="
+  // Pipe Operators
+  | "|>"
   // Unary Operators
   | "-"
   | "!";

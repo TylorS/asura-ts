@@ -24,12 +24,14 @@ export type Token =
   | InKeyword
   | IntegerLiteral
   | InterfaceKeyword
+  | JoinKeyword
   | LetKeyword
   | MutableKeyword
   | MatchKeyword
   | MultiLineComment
   | Newline
   | OfKeyword
+  | ResumeKeyword
   | ReturnKeyword
   | StringLiteral
   | Symbol<SymbolKind>
@@ -171,6 +173,18 @@ export class OfKeyword extends Keyword<"of"> {
 export class ReturnKeyword extends Keyword<"return"> {
   constructor(span: Span) {
     super("return", span);
+  }
+}
+
+export class ResumeKeyword extends Keyword<"resume"> {
+  constructor(span: Span) {
+    super("resume", span);
+  }
+}
+
+export class JoinKeyword extends Keyword<"join"> {
+  constructor(span: Span) {
+    super("join", span);
   }
 }
 

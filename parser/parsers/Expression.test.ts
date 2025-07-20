@@ -381,6 +381,22 @@ describe("Expression Parser", () => {
       const func = result.value as AST.FunctionExpression;
       expect(func.typeParameters).toHaveLength(1);
     });
+
+    it("should parse function expressions with no return type", () => {
+      const source = "fun(x: Int) => x + 1";
+      const context = createParserContext(source);
+      const result = expression().parse(context);
+
+      assertSuccess(result, context, source);
+    });
+
+    it("should parse function expressions with no parameters", () => {
+      const source = "fun() => 1";
+      const context = createParserContext(source);
+      const result = expression().parse(context);
+
+      assertSuccess(result, context, source);
+    });
   });
 
   describe("match expressions", () => {
@@ -430,6 +446,119 @@ describe("Expression Parser", () => {
 
       assertSuccess(result, context, source);
       expect(result.value).toBeInstanceOf(AST.Block);
+    });
+  });
+
+  describe("resume expressions", () => {
+    it("should parse simple resume expressions", () => {
+      const source = "resume(x)";
+      const context = createParserContext(source);
+      const result = expression().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.ResumeExpression);
+      const resume = result.value as AST.ResumeExpression;
+      expect(resume.argument).toBeInstanceOf(AST.Identifier);
+      expect((resume.argument as AST.Identifier).text).toBe("x");
+    });
+
+    it("should parse resume expressions with complex arguments", () => {
+      const source = "resume(x + y)";
+      const context = createParserContext(source);
+      const result = expression().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.ResumeExpression);
+      const resume = result.value as AST.ResumeExpression;
+      expect(resume.argument).toBeInstanceOf(AST.BinaryExpression);
+      const binary = resume.argument as AST.BinaryExpression;
+      expect(binary.operator.text).toBe("+");
+    });
+
+    it("should parse resume expressions with function calls", () => {
+      const source = "resume(processValue(x, y))";
+      const context = createParserContext(source);
+      const result = expression().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.ResumeExpression);
+      const resume = result.value as AST.ResumeExpression;
+      expect(resume.argument).toBeInstanceOf(AST.CallExpression);
+    });
+  });
+
+  describe("handler expressions", () => {
+    it("should parse simple handler expressions", () => {
+      const source = "handle ForEach { foo: x + y }";
+      const context = createParserContext(source);
+      const result = expression().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.HandlerExpression);
+      const handler = result.value as AST.HandlerExpression;
+      expect(handler.effectName).toBeInstanceOf(AST.TypeReference);
+      expect(handler.handlers).toHaveLength(1);
+      expect(handler.handlers[0].operation.text).toBe("foo");
+      expect(handler.handlers[0].body).toBeInstanceOf(AST.BinaryExpression);
+    });
+
+    it("should parse handler expressions with multiple cases", () => {
+      const source = "handle ForEach { foo: x + y, bar: process(x) }";
+      const context = createParserContext(source);
+      const result = expression().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.HandlerExpression);
+      const handler = result.value as AST.HandlerExpression;
+      expect(handler.handlers).toHaveLength(2);
+      expect(handler.handlers[0].operation.text).toBe("foo");
+      expect(handler.handlers[1].operation.text).toBe("bar");
+    });
+
+    it("should parse handler expressions with functions", () => {
+      const source = "handle ForEach { foo: fun(x, y) => x + y }";
+      const context = createParserContext(source);
+      const result = expression().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.HandlerExpression);
+      const handler = result.value as AST.HandlerExpression;
+      expect(handler.handlers).toHaveLength(1);
+      expect(handler.handlers[0].body).toBeInstanceOf(AST.FunctionExpression);
+    });
+
+    it("should parse handler expressions with resume", () => {
+      const source = "handle ForEach { foo: resume(x + y) }";
+      const context = createParserContext(source);
+      const result = expression().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.HandlerExpression);
+      const handler = result.value as AST.HandlerExpression;
+      expect(handler.handlers).toHaveLength(1);
+      expect(handler.handlers[0].body).toBeInstanceOf(AST.ResumeExpression);
+    });
+
+    it("should parse handler expressions with generic effect types", () => {
+      const source = "handle ForEach<A> { foo: x }";
+      const context = createParserContext(source);
+      const result = expression().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.HandlerExpression);
+      const handler = result.value as AST.HandlerExpression;
+      expect(handler.effectName).toBeInstanceOf(AST.TypeReference);
+    });
+
+    it("should parse empty handler expressions", () => {
+      const source = "handle ForEach { }";
+      const context = createParserContext(source);
+      const result = expression().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.HandlerExpression);
+      const handler = result.value as AST.HandlerExpression;
+      expect(handler.handlers).toHaveLength(0);
     });
   });
 

@@ -184,6 +184,24 @@ describe("Statement Parser", () => {
         expect(effectDecl.exportKeyword).not.toBeNull();
       }
     });
+
+    it("should parse effect declarations with function syntax", () => {
+      const source = `
+        effect Console {
+          log(String) => Unit
+        }
+      `;
+      const context = createParserContext(source);
+      const result = statement().parse(context);
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.EffectDeclaration);
+      const effectDecl = result.value as AST.EffectDeclaration;
+      expect(effectDecl.name.text).toBe("Console");
+      expect(effectDecl.fields).toHaveLength(1);
+      expect(effectDecl.fields[0].name.text).toBe("log");
+      expect(effectDecl.fields[0].type).toBeInstanceOf(AST.FunctionType);
+      expect((effectDecl.fields[0].type as AST.FunctionType).parameters).toHaveLength(1);
+    });
   });
 
   describe("function declarations", () => {
@@ -481,6 +499,105 @@ describe("Statement Parser", () => {
         expect(exprStmt.expression).toBeInstanceOf(AST.BinaryExpression);
       }
     });
+
+    it("should parse handler expressions as statements", () => {
+      const context = createParserContext("handle ForEach { foo: x + y }");
+      const result = statement().parse(context);
+
+      expect(result.type).toBe("success");
+      if (result.type === "success") {
+        expect(result.value).toBeInstanceOf(AST.ExpressionStatement);
+        const exprStmt = result.value as AST.ExpressionStatement;
+        expect(exprStmt.expression).toBeInstanceOf(AST.HandlerExpression);
+      }
+    });
+
+    it("should parse resume expressions as statements", () => {
+      const context = createParserContext("resume(x)");
+      const result = statement().parse(context);
+
+      expect(result.type).toBe("success");
+      if (result.type === "success") {
+        expect(result.value).toBeInstanceOf(AST.ExpressionStatement);
+        const exprStmt = result.value as AST.ExpressionStatement;
+        expect(exprStmt.expression).toBeInstanceOf(AST.ResumeExpression);
+      }
+    });
+  });
+
+  describe("effect operations", () => {
+    it("should parse simple effect operations", () => {
+      const context = createParserContext("a <- ForEach.forEach(items)");
+      const result = statement().parse(context);
+
+      expect(result.type).toBe("success");
+      if (result.type === "success") {
+        expect(result.value).toBeInstanceOf(AST.EffectOperation);
+        const effectOp = result.value as AST.EffectOperation;
+        expect(effectOp.variable.text).toBe("a");
+        expect(effectOp.effectName.text).toBe("ForEach");
+        expect(effectOp.operation.text).toBe("forEach");
+        expect(effectOp.args).toHaveLength(1);
+        expect(effectOp.args[0]).toBeInstanceOf(AST.Identifier);
+      }
+    });
+
+    it("should parse effect operations with multiple arguments", () => {
+      const context = createParserContext("result <- IO.readFile(path, encoding)");
+      const result = statement().parse(context);
+
+      expect(result.type).toBe("success");
+      if (result.type === "success") {
+        expect(result.value).toBeInstanceOf(AST.EffectOperation);
+        const effectOp = result.value as AST.EffectOperation;
+        expect(effectOp.variable.text).toBe("result");
+        expect(effectOp.effectName.text).toBe("IO");
+        expect(effectOp.operation.text).toBe("readFile");
+        expect(effectOp.args).toHaveLength(2);
+      }
+    });
+
+    it("should parse effect operations with no arguments", () => {
+      const context = createParserContext("value <- State.get()");
+      const result = statement().parse(context);
+
+      expect(result.type).toBe("success");
+      if (result.type === "success") {
+        expect(result.value).toBeInstanceOf(AST.EffectOperation);
+        const effectOp = result.value as AST.EffectOperation;
+        expect(effectOp.variable.text).toBe("value");
+        expect(effectOp.effectName.text).toBe("State");
+        expect(effectOp.operation.text).toBe("get");
+        expect(effectOp.args).toHaveLength(0);
+      }
+    });
+
+    it("should parse effect operations with complex arguments", () => {
+      const context = createParserContext("result <- Console.log(\"Hello\", user.name)");
+      const result = statement().parse(context);
+
+      expect(result.type).toBe("success");
+      if (result.type === "success") {
+        expect(result.value).toBeInstanceOf(AST.EffectOperation);
+        const effectOp = result.value as AST.EffectOperation;
+        expect(effectOp.args).toHaveLength(2);
+        expect(effectOp.args[0]).toBeInstanceOf(AST.StringLiteral);
+        expect(effectOp.args[1]).toBeInstanceOf(AST.PropertyAccess);
+      }
+    });
+
+    it("should parse effect operations with nested expressions", () => {
+      const context = createParserContext("sum <- Math.add(x, y * 2)");
+      const result = statement().parse(context);
+
+      expect(result.type).toBe("success");
+      if (result.type === "success") {
+        expect(result.value).toBeInstanceOf(AST.EffectOperation);
+        const effectOp = result.value as AST.EffectOperation;
+        expect(effectOp.args).toHaveLength(2);
+        expect(effectOp.args[1]).toBeInstanceOf(AST.BinaryExpression);
+      }
+    });
   });
 
   describe("blocks", () => {
@@ -532,6 +649,72 @@ describe("Statement Parser", () => {
       expect(ifStmt.else_).toBeNull();
     });
 
+    it("should parse complete effect handling workflow", () => {
+      const source = `effect ForEach<A> {
+  forEach(Array<A>) => A
+}
+
+let withForEach = handle ForEach {
+  forEach: fun(items) => {
+    for item of items {
+      resume(item);
+    }
+  }
+}
+
+fun processItems(items: Array<number>): Array<number> => {
+  item <- ForEach.forEach(items);
+  return item + 1;
+}
+
+let result = processItems([1, 2, 3]) |> withForEach;
+      `;
+
+      const context = createParserContext(source);
+
+      // Parse effect declaration
+      let result = statement().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.EffectDeclaration);
+
+      // Parse handler declaration
+      result = statement().parse(context);
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.LetDeclaration);
+      const letDecl = result.value as AST.LetDeclaration;
+      expect(letDecl.initializer).toBeInstanceOf(AST.HandlerExpression);
+
+      // Parse function declaration
+      result = statement().parse(context);
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.FunctionDeclaration);
+
+      // Parse final let declaration
+      result = statement().parse(context);
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.LetDeclaration);
+    });
+
+    it("should parse handler composition with pipes", () => {
+      const source = `
+        let result = processData([1, 2, 3]) |> withForEach |> withLogging;
+      `;
+
+      const context = createParserContext(source);
+      const result = statement().parse(context);
+
+      expect(result.type).toBe("success");
+      if (result.type === "success") {
+        expect(result.value).toBeInstanceOf(AST.LetDeclaration);
+        const letDecl = result.value as AST.LetDeclaration;
+        expect(letDecl.initializer).toBeInstanceOf(AST.BinaryExpression);
+        // The pipe operator should create a chain of binary expressions
+        const binary = letDecl.initializer as AST.BinaryExpression;
+        expect(binary.operator.text).toBe("|>");
+      }
+    });
+
     it("should parse mixed declarations and statements", () => {
       const context = createParserContext(`
         let x = 42;
@@ -563,6 +746,58 @@ describe("Statement Parser", () => {
   });
 
   describe("error recovery", () => {
+    describe("handler and effect syntax errors", () => {
+      it("should handle malformed handler expressions", () => {
+        const context = createParserContext("handle ForEach { foo: }");
+        const result = statement().parse(context);
+
+        expect(result.type).toBe("failure");
+        if (result.type === "failure") {
+          expect(result.errors.length).toBeGreaterThan(0);
+        }
+      });
+
+      // it("should handle malformed effect operations", () => {
+      //   const context = createParserContext("a <- ForEach.");
+      //   const result = statement().parse(context);
+
+      //   expect(result.type).toBe("failure");
+      //   if (result.type === "failure") {
+      //     expect(result.errors.length).toBeGreaterThan(0);
+      //   }
+      // });
+
+      it("should handle incomplete resume expressions", () => {
+        const context = createParserContext("resume");
+        const result = statement().parse(context);
+
+        expect(result.type).toBe("failure");
+        if (result.type === "failure") {
+          expect(result.errors.length).toBeGreaterThan(0);
+        }
+      });
+
+      // it("should handle missing effect operation arguments", () => {
+      //   const context = createParserContext("a <- ForEach.forEach(");
+      //   const result = statement().parse(context);
+
+      //   expect(result.type).toBe("failure");
+      //   if (result.type === "failure") {
+      //     expect(result.errors.length).toBeGreaterThan(0);
+      //   }
+      // });
+
+      it("should handle malformed handler case syntax", () => {
+        const context = createParserContext("handle ForEach { foo }");
+        const result = statement().parse(context);
+
+        expect(result.type).toBe("failure");
+        if (result.type === "failure") {
+          expect(result.errors.length).toBeGreaterThan(0);
+        }
+      });
+    });
+
     describe("context tracking", () => {
       it("should track parsing context during statement parsing", () => {
         const context = createParserContext("let x = 42");

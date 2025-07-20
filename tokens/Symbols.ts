@@ -31,6 +31,8 @@ export const SYMBOLS = {
   ModulusAssign: "%=",
   ExponentAssign: "**=",
   Arrow: "=>",
+  EffectAssign: "<-",
+  Pipe: "|>",
 
   // Logical Operators
   NullCoalescing: "??",

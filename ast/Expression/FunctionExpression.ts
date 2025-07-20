@@ -11,7 +11,7 @@ export class FunctionExpression {
   constructor(
     readonly typeParameters: readonly TypeParameter[],
     readonly parameters: ReadonlyArray<FunctionParameter>,
-    readonly returnType: Type,
+    readonly returnType: Type | null,
     readonly effects: EffectRecordSignature | null,
     readonly body: Expression | Block,
     readonly span: Span,
@@ -23,7 +23,7 @@ export class FunctionParameter {
 
   constructor(
     readonly name: Identifier,
-    readonly type: Type,
+    readonly type: Type | null,
     readonly span: Span,
   ) {}
 }

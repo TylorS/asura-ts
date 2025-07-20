@@ -2,6 +2,8 @@ import * as AST from "../../ast/mod.ts";
 import { DiagnosticCode } from "../../diagnostics/Diagnostic.ts";
 import * as Parser from "../Parser.ts";
 import { pipe } from "../Pipeable.ts";
+import { handlerExpression } from "./HandlerExpression.ts";
+import { resumeExpression } from "./ResumeExpression.ts";
 import { block } from "./Statement.ts";
 import { effectRecordSignature, type, typeParametersList } from "./Type.ts";
 
@@ -419,17 +421,14 @@ function recordPatternField(): Parser.Parser<AST.RecordPatternField> {
 }
 
 function tuplePattern(): Parser.Parser<AST.TuplePattern> {
-  return Parser.seq(
-    Parser.symbol("["),
-    Parser.lazy(matchCasePattern).pipe(
-      Parser.separatedBy(Parser.symbol(",")),
-    ),
-    Parser.symbol("]"),
+  return Parser.lazy(matchCasePattern).pipe(
+    Parser.separatedBy(Parser.symbol(",")),
+    Parser.delimitedBy(Parser.symbol("["), Parser.symbol("]")),
   ).pipe(
-    Parser.map(([open, patterns, close]) =>
+    Parser.map(({ before, content, after }) =>
       new AST.TuplePattern(
-        patterns,
-        new AST.Span(open.span.start, close.span.end),
+        content ?? [],
+        new AST.Span(before.span.start, after.span.end),
       )
     ),
   );
@@ -448,11 +447,12 @@ export function functionExpression(): Parser.Parser<AST.FunctionExpression> {
     Parser.symbol("("),
     functionParameter().pipe(
       Parser.separatedBy(Parser.symbol(",")),
+      Parser.optional,
     ),
     Parser.symbol(")"),
-    Parser.symbol(":"),
+    Parser.optional(Parser.symbol(":")),
     Parser.optional(effectRecordSignature()),
-    type(),
+    Parser.optional(type()),
     returnExpressionOrBlock(),
   ).pipe(
     Parser.map(
@@ -471,7 +471,7 @@ export function functionExpression(): Parser.Parser<AST.FunctionExpression> {
       ) => {
         return new AST.FunctionExpression(
           typeParameters?.typeParameters ?? [],
-          parameters,
+          parameters ?? [],
           returnType,
           effects,
           body,
@@ -485,20 +485,18 @@ export function functionExpression(): Parser.Parser<AST.FunctionExpression> {
 export function functionParameter(): Parser.Parser<AST.FunctionParameter> {
   return Parser.seq(
     Parser.or(Parser.token("Identifier"), Parser.keywordAsIdentifer()),
-    Parser.symbol(":"),
-    type(),
+    Parser.optional(Parser.seq(Parser.symbol(":"), Parser.lazy(type))),
   ).pipe(
     Parser.map((
       [
         identifier,
-        _colon,
-        type,
+        type
       ],
     ) =>
       new AST.FunctionParameter(
         identifier,
-        type,
-        new AST.Span(identifier.span.start, type.span.end),
+        type?.[1] ?? null,
+        new AST.Span(identifier.span.start, type?.[1]?.span.end ?? identifier.span.end),
       )
     ),
   );
@@ -615,6 +613,8 @@ function primaryExpression(): Parser.Parser<AST.Expression> {
     Parser.lazy(matchExpression),
     Parser.lazy(functionExpression),
     Parser.lazy(unaryExpression),
+    Parser.lazy(resumeExpression),
+    Parser.lazy(handlerExpression),
     Parser.lazy(callExpression),
   );
 }
@@ -664,13 +664,29 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
         ).pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
+          ),
+        ),
+      ),
+
+      // Pipe (|>) (left-associative, higher than assignment, lower than logical OR)
+      Parser.PrecedenceLevel.left(
+        Parser.symbol("|>").pipe(
+          Parser.map(
+            (symbol) =>
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
       ),
@@ -680,13 +696,13 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
         Parser.symbol("||").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
       ),
@@ -696,13 +712,13 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
         Parser.symbol("&&").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
       ),
@@ -712,73 +728,73 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
         Parser.symbol("==").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
         Parser.symbol("!=").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
         Parser.symbol("<").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
         Parser.symbol("<=").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
         Parser.symbol(">").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
         Parser.symbol(">=").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
       ),
@@ -788,25 +804,25 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
         Parser.symbol("+").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
         Parser.symbol("-").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
       ),
@@ -816,37 +832,37 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
         Parser.symbol("*").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
         Parser.symbol("/").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
         Parser.symbol("%").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
       ),
@@ -856,13 +872,13 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
         Parser.symbol("**").pipe(
           Parser.map(
             (symbol) =>
-            (left: AST.Expression, right: AST.Expression): AST.Expression =>
-              new AST.BinaryExpression(
-                left,
-                new AST.OperatorNode(symbol.text, symbol.span),
-                right,
-                new AST.Span(left.span.start, right.span.end),
-              ),
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
           ),
         ),
       ),

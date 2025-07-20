@@ -322,7 +322,7 @@ export function functionType(): Parser.Parser<AST.FunctionType> {
   );
 }
 
-function functionParameterType(): Parser.Parser<AST.FunctionParameterType> {
+export function functionParameterType(): Parser.Parser<AST.FunctionParameterType> {
   return Parser.seq(
     Parser.optional(fieldName),
     Parser.optional(effectRecordSignature()),

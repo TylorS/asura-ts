@@ -1,8 +1,10 @@
 import * as AST from "../../ast/mod.ts";
+import { DiagnosticCode } from "../../diagnostics/mod.ts";
 import { Span } from "../../tokens/Span.ts";
 import { AsKeyword } from "../../tokens/Token.ts";
-import { DiagnosticCode } from "../../diagnostics/mod.ts";
 import * as Parser from "../Parser.ts";
+import { pipe } from "../Pipeable.ts";
+import { effectOperation } from "./EffectOperation.ts";
 import {
   expression,
   functionParameter,
@@ -10,12 +12,12 @@ import {
 } from "./Expression.ts";
 import {
   effectRecordSignature,
+  functionParameterType,
   recordTypeField,
   type,
   typeParametersList,
   typeReference,
 } from "./Type.ts";
-import { pipe } from "../Pipeable.ts";
 
 // Helper function to add parsing context tracking
 function withParsingContext<T>(
@@ -59,6 +61,7 @@ export function statement(): Parser.Parser<AST.Statement> {
           comment(),
           multilineComment(),
           declaration(),
+          effectOperation(),
           controlFlow(),
           expressionStatement(),
         ),
@@ -335,26 +338,78 @@ export function effectDeclaration(): Parser.Parser<AST.EffectDeclaration> {
     Parser.token("effect"),
     Parser.token("Identifier"),
     Parser.optional(typeParametersList()),
-    recordTypeField().pipe(
+    Parser.symbol('{'),
+    effectField().pipe(
       Parser.separatedBy(Parser.symbol(",")),
-      Parser.delimitedBy(Parser.symbol("{"), Parser.symbol("}")),
     ),
+    Parser.symbol('}'),
   ).pipe(
     Parser.map(
-      ([exportKeyword, effectKeyword, name, typeParameters, fields]) => {
+      ([exportKeyword, effectKeyword, name, typeParameters, _open, fields, _close]) => {
         return new AST.EffectDeclaration(
           exportKeyword,
           name,
           typeParameters?.typeParameters ?? [],
-          fields.content,
+          fields,
           new AST.Span(
             exportKeyword?.span.start ?? effectKeyword.span.start,
-            fields.after.span.end,
+            _close.span.end,
           ),
         );
       },
     ),
   );
+}
+
+function effectField(): Parser.Parser<AST.RecordFieldType> {
+  return recordTypeField().pipe(
+    _ => Parser.or(
+      _,
+      Parser.or(
+        _,
+        // Function syntax: Identifier<...>(...) => {Effects} Type
+        Parser.seq(
+          Parser.token("Identifier"),
+          Parser.optional(typeParametersList()),
+          Parser.symbol("("),
+          functionParameterType().pipe(
+            Parser.separatedBy(Parser.symbol(",")),
+          ),
+          Parser.symbol(")"),
+          Parser.symbol("=>"),
+          Parser.optional(effectRecordSignature()),
+          type(),
+        ).pipe(
+          Parser.map(
+            ([
+              name,
+              typeParameters,
+              _lparen,
+              parameters,
+              _rparen,
+              _arrow,
+              effects,
+              returnType,
+            ]) =>
+              new AST.RecordFieldType(
+                name,
+                new AST.FunctionType(
+                  typeParameters?.typeParameters ?? [],
+                  parameters,
+                  effects,
+                  returnType,
+                  new AST.Span(
+                    name.span.start,
+                    returnType.span.end,
+                  ),
+                ),
+                false,
+              ),
+          ),
+        ),
+      )
+    )
+  )
 }
 
 export function functionDeclaration(): Parser.Parser<AST.FunctionDeclaration> {

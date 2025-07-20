@@ -13,6 +13,7 @@ import { TupleType } from "./TupleType.ts";
 import { TypeReference } from "./TypeReference.ts";
 import { UnionType } from "./UnionType.ts";
 import { EffectType } from "./EffectType.ts";
+import { HandlerType } from "./HandlerType.ts";
 
 export type Type =
   | ArrayType
@@ -26,6 +27,7 @@ export type Type =
   | FloatType
   | FloatLiteralType
   | FunctionType
+  | HandlerType
   | IntegerType
   | IntegerLiteralType
   | IntersectionType

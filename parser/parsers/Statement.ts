@@ -362,53 +362,48 @@ export function effectDeclaration(): Parser.Parser<AST.EffectDeclaration> {
 }
 
 function effectField(): Parser.Parser<AST.RecordFieldType> {
-  return recordTypeField().pipe(
-    _ => Parser.or(
-      _,
-      Parser.or(
-        _,
-        // Function syntax: Identifier<...>(...) => {Effects} Type
-        Parser.seq(
-          Parser.token("Identifier"),
-          Parser.optional(typeParametersList()),
-          Parser.symbol("("),
-          functionParameterType().pipe(
-            Parser.separatedBy(Parser.symbol(",")),
-          ),
-          Parser.symbol(")"),
-          Parser.symbol("=>"),
-          Parser.optional(effectRecordSignature()),
-          type(),
-        ).pipe(
-          Parser.map(
-            ([
-              name,
-              typeParameters,
-              _lparen,
+  return Parser.or(
+    recordTypeField(),
+    // Function syntax: Identifier<...>(...) => {Effects} Type
+    Parser.seq(
+      Parser.token("Identifier"),
+      Parser.optional(typeParametersList()),
+      Parser.symbol("("),
+      functionParameterType().pipe(
+        Parser.separatedBy(Parser.symbol(",")),
+      ),
+      Parser.symbol(")"),
+      Parser.symbol("=>"),
+      Parser.optional(effectRecordSignature()),
+      type(),
+    ).pipe(
+      Parser.map(
+        ([
+          name,
+          typeParameters,
+          _lparen,
+          parameters,
+          _rparen,
+          _arrow,
+          effects,
+          returnType,
+        ]) =>
+          new AST.RecordFieldType(
+            name,
+            new AST.FunctionType(
+              typeParameters?.typeParameters ?? [],
               parameters,
-              _rparen,
-              _arrow,
               effects,
               returnType,
-            ]) =>
-              new AST.RecordFieldType(
-                name,
-                new AST.FunctionType(
-                  typeParameters?.typeParameters ?? [],
-                  parameters,
-                  effects,
-                  returnType,
-                  new AST.Span(
-                    name.span.start,
-                    returnType.span.end,
-                  ),
-                ),
-                false,
+              new AST.Span(
+                name.span.start,
+                returnType.span.end,
               ),
+            ),
+            false,
           ),
-        ),
-      )
-    )
+      ),
+    ),
   )
 }
 

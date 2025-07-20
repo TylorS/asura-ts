@@ -39,6 +39,7 @@ export function primaryType(): Parser.Parser<AST.Type> {
     Parser.lazy(parenthesizedType),
     Parser.lazy(baseLiteral),
     Parser.lazy(arrayType),
+    Parser.lazy(handlerType),
     Parser.lazy(typeReference),
     Parser.lazy(regexLiteralType),
     Parser.lazy(recordType),
@@ -439,8 +440,8 @@ export function typeParameter(): Parser.Parser<AST.TypeParameter> {
       const constraints = type?.kind === "IntersectionType"
         ? type.types
         : type
-        ? [type]
-        : [];
+          ? [type]
+          : [];
 
       return new AST.TypeParameter(
         reference,
@@ -451,5 +452,12 @@ export function typeParameter(): Parser.Parser<AST.TypeParameter> {
         ),
       );
     }),
+  );
+}
+
+export function handlerType(): Parser.Parser<AST.HandlerType> {
+  return typeReference().pipe(
+    Parser.delimitedBy(Parser.seq(Parser.literal("Handler"), Parser.symbol("<")), Parser.symbol(">")),
+    Parser.map(({ before, content, after }) => new AST.HandlerType(content, new AST.Span(before[0].span.start, after.span.end))),
   );
 }

@@ -6,6 +6,7 @@ export * from "./EffectRecordSignature.ts";
 export * from "./EffectType.ts";
 export * from "./FloatType.ts";
 export * from "./FunctionType.ts";
+export * from "./HandlerType.ts";
 export * from "./IntegerType.ts";
 export * from "./IntersectionType.ts";
 export * from "./RecordType.ts";

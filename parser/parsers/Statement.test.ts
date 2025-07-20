@@ -318,6 +318,40 @@ describe("Statement Parser", () => {
         expect(letDecl.mutableKeyword).not.toBeNull();
       }
     });
+
+    it('should allow type annotations', () => {
+      const source = 'let x: Int = 42';
+      const context = createParserContext(source);
+      const result = statement().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.LetDeclaration);
+      const letDecl = result.value as AST.LetDeclaration;
+      expect(letDecl.type).toBeInstanceOf(AST.IntegerType);
+    })
+
+    it('should allow handler type annotations', () => {
+      const source = `
+        let x: Handler<ForEach<_>> = handle ForEach<_> { 
+          forEach: fun(items) => {
+            for item of items {
+              resume(item)
+            }
+          }
+        }
+      `;
+      const context = createParserContext(source);
+      const result = statement().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.LetDeclaration);
+      const letDecl = result.value as AST.LetDeclaration;
+      expect(letDecl.type).toBeInstanceOf(AST.HandlerType);
+      const handlerType = letDecl.type as AST.HandlerType;
+      expect(handlerType.effect).toBeInstanceOf(AST.TypeReference);
+      expect(handlerType.effect.name.text).toBe("ForEach");
+      expect(handlerType.effect.typeArguments).toHaveLength(1);
+    })
   });
 
   describe("type alias declarations", () => {
@@ -654,7 +688,7 @@ describe("Statement Parser", () => {
   forEach(Array<A>) => A
 }
 
-let withForEach = handle ForEach {
+let withForEach = handle ForEach<_> {
   forEach: fun(items) => {
     for item of items {
       resume(item);
@@ -662,7 +696,7 @@ let withForEach = handle ForEach {
   }
 }
 
-fun processItems(items: Array<number>): Array<number> => {
+fun processItems(items: Array<number>): {ForEach<number>} Array<number> => {
   item <- ForEach.forEach(items);
   return item + 1;
 }

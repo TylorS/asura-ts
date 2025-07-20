@@ -691,6 +691,22 @@ export function binaryExpression(): Parser.Parser<AST.Expression> {
         ),
       ),
 
+      // Combine handlers (&) (left-associative)
+      Parser.PrecedenceLevel.left(
+        Parser.symbol("&").pipe(
+          Parser.map(
+            (symbol) =>
+              (left: AST.Expression, right: AST.Expression): AST.Expression =>
+                new AST.BinaryExpression(
+                  left,
+                  new AST.OperatorNode(symbol.text, symbol.span),
+                  right,
+                  new AST.Span(left.span.start, right.span.end),
+                ),
+          ),
+        ),
+      ),
+
       // Logical OR (||) (left-associative)
       Parser.PrecedenceLevel.left(
         Parser.symbol("||").pipe(

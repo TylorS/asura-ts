@@ -352,6 +352,41 @@ describe("Statement Parser", () => {
       expect(handlerType.effect.name.text).toBe("ForEach");
       expect(handlerType.effect.typeArguments).toHaveLength(1);
     })
+
+    it('should allow intersection handler type annotations', () => {
+      const source = `
+        let x: Handler<ForEach<_>> & Handler<IO> = handle ForEach<_> { 
+          forEach: fun(items) => {
+            for item of items {
+              resume(item)
+            }
+          }
+        } & handle IO {
+          read: fun(path: String) => {
+            resume(path)
+          }
+        }
+      `;
+      const context = createParserContext(source);
+      const result = statement().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.LetDeclaration);
+      const letDecl = result.value as AST.LetDeclaration;
+      expect(letDecl.type).toBeInstanceOf(AST.IntersectionType);
+      const intersectionType = letDecl.type as AST.IntersectionType;
+      expect(intersectionType.types).toHaveLength(2);
+      expect(intersectionType.types[0]).toBeInstanceOf(AST.HandlerType);
+      expect(intersectionType.types[1]).toBeInstanceOf(AST.HandlerType);
+      const handlerType1 = intersectionType.types[0] as AST.HandlerType;
+      const handlerType2 = intersectionType.types[1] as AST.HandlerType;
+      expect(handlerType1.effect).toBeInstanceOf(AST.TypeReference);
+      expect(handlerType2.effect).toBeInstanceOf(AST.TypeReference);
+      expect(handlerType1.effect.name.text).toBe("ForEach");
+      expect(handlerType2.effect.name.text).toBe("IO");
+
+      console.log(letDecl.initializer);
+    })
   });
 
   describe("type alias declarations", () => {

@@ -25,6 +25,8 @@ export type Operator =
   | "**="
   // Pipe Operators
   | "|>"
+  // Combine handlers
+  | "&"
   // Unary Operators
   | "-"
   | "!";

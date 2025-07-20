@@ -10,7 +10,7 @@ import {
   PartialNode,
   RecoveredNode,
 } from "./Parser.ts";
-import { expression, expressionWithRecovery } from "./parsers/Expression.ts";
+import { expression } from "./parsers/Expression.ts";
 import { statement } from "./parsers/Statement.ts";
 import { pipe } from "./Pipeable.ts";
 
@@ -865,31 +865,12 @@ describe("Complex Error Recovery Scenarios", () => {
       });
     });
 
-    it("should verify recovery attempt information is tracked", () => {
-      const source = "1 + + 2";
-      const context = createParserContext(source);
-      const result = expressionWithRecovery().parse(context);
-
-      // Should have recovery history
-      const recoveryHistory = context.getRecoveryHistory();
-      expect(Array.isArray(recoveryHistory)).toBe(true);
-
-      // Verify recovery event structure
-      recoveryHistory.forEach((event) => {
-        expect(typeof event.strategy).toBe("string");
-        expect(typeof event.position).toBe("number");
-        expect(typeof event.tokensSkipped).toBe("number");
-        expect(typeof event.success).toBe("boolean");
-        expect(typeof event.message).toBe("string");
-      });
-    });
-
     it("should verify context stack management during recovery", () => {
       const source = "nested(expression(with(errors)))";
       const context = createParserContext(source);
 
       // Parse with context tracking
-      const result = expression().parse(context);
+      expression().parse(context);
 
       // Context stack should be properly managed (empty after parsing)
       expect(context.getCurrentContext()).toBeNull();

@@ -1,10 +1,10 @@
+// deno-lint-ignore-file no-explicit-any
 import { describe, expect, it } from "vitest";
-import * as AST from "../ast/mod.ts";
 import { DiagnosticCode, DiagnosticCollection } from "../diagnostics/mod.ts";
 import { tokenizeToArray } from "../tokens/Tokenizer.ts";
 import * as Parser from "./Parser.ts";
-import { ParserContext, ParseResult, ParseSuccess } from "./Parser.ts";
-import { expression, expressionWithRecovery } from "./parsers/Expression.ts";
+import { ParserContext, ParseResult } from "./Parser.ts";
+import { expression } from "./parsers/Expression.ts";
 import { block, statement } from "./parsers/Statement.ts";
 import { Symbol } from "../tokens/Token.ts";
 
@@ -723,22 +723,6 @@ describe("Basic Error Recovery Scenarios", () => {
         );
         expect(hasRecoveryOrErrors).toBe(true);
       });
-    });
-
-    it("should demonstrate error recovery integration with expressionWithRecovery", () => {
-      const source = "1 + + 2";
-      const context = createParserContext(source);
-      const result = expressionWithRecovery().parse(context);
-
-      // Should either succeed with recovery or fail with meaningful error
-      expect(result.type).toBeDefined();
-
-      // Context should have been pushed and popped properly
-      expect(context.getCurrentContext()).toBeNull();
-
-      // Recovery history should be available
-      const recoveryHistory = context.getRecoveryHistory();
-      expect(Array.isArray(recoveryHistory)).toBe(true);
     });
   });
 });

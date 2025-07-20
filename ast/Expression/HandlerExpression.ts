@@ -10,7 +10,7 @@ export class HandlerExpression {
     readonly effectName: TypeReference,
     readonly handlers: readonly HandlerCase[],
     readonly span: Span,
-  ) { }
+  ) {}
 }
 
 export class HandlerCase {
@@ -20,5 +20,5 @@ export class HandlerCase {
     readonly operation: Identifier,
     readonly body: Expression,
     readonly span: Span,
-  ) { }
-} 
+  ) {}
+}

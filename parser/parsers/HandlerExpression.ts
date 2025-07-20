@@ -1,7 +1,16 @@
 import * as AST from "../../ast/mod.ts";
 import * as Parser from "../Parser.ts";
-import { expression, functionParameter, returnExpressionOrBlock } from "./Expression.ts";
-import { effectRecordSignature, type, typeParametersList, typeReference } from "./Type.ts";
+import {
+  expression,
+  functionParameter,
+  returnExpressionOrBlock,
+} from "./Expression.ts";
+import {
+  effectRecordSignature,
+  type,
+  typeParametersList,
+  typeReference,
+} from "./Type.ts";
 
 export function handlerExpression(): Parser.Parser<AST.HandlerExpression> {
   return Parser.seq(
@@ -54,19 +63,33 @@ function functionHandlerCase(): Parser.Parser<AST.HandlerCase> {
     Parser.optional(type()),
     returnExpressionOrBlock(),
   ).pipe(
-    Parser.map(([operation, typeParameters, _open, parameters, _close, _colon, effects, returnType, body]) => {
-      return new AST.HandlerCase(
-        operation,
-        new AST.FunctionExpression(
-          typeParameters?.typeParameters ?? [],
+    Parser.map(
+      (
+        [
+          operation,
+          typeParameters,
+          _open,
           parameters,
-          returnType,
+          _close,
+          _colon,
           effects,
+          returnType,
           body,
+        ],
+      ) => {
+        return new AST.HandlerCase(
+          operation,
+          new AST.FunctionExpression(
+            typeParameters?.typeParameters ?? [],
+            parameters,
+            returnType,
+            effects,
+            body,
+            new AST.Span(operation.span.start, body.span.end),
+          ),
           new AST.Span(operation.span.start, body.span.end),
-        ),
-        new AST.Span(operation.span.start, body.span.end),
-      )
-    }),
+        );
+      },
+    ),
   );
 }

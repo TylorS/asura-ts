@@ -140,7 +140,6 @@ describe("RecoveryPerformanceManager", () => {
       expect(cached).toBeNull();
     });
   });
-  
 
   describe("Bounded token skipping", () => {
     it("should skip tokens within limit", () => {

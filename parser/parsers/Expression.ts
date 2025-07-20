@@ -268,7 +268,7 @@ export function matchExpression(): Parser.Parser<AST.MatchExpression> {
 
 function matchCase(): Parser.Parser<AST.MatchCase> {
   return Parser.seq(
-    matchCasePattern(),
+    patterns(),
     Parser.optional(matchCaseGuard()),
     returnExpressionOrBlock(),
   ).pipe(
@@ -299,15 +299,15 @@ export function returnExpressionOrBlock(): Parser.Parser<
   );
 }
 
-function matchCasePattern(): Parser.Parser<AST.Pattern> {
+export function patterns(): Parser.Parser<AST.Pattern> {
   return Parser.or(
+    tuplePattern(),
     literalPattern(),
     variablePattern(),
     wildcardPattern(),
     tupleConstructorPattern(),
     recordConstructorPattern(),
     voidConstructorPattern(),
-    tuplePattern(),
   );
 }
 
@@ -320,13 +320,13 @@ function literalPattern(): Parser.Parser<AST.LiteralPattern> {
 function variablePattern(): Parser.Parser<AST.VariablePattern> {
   return Parser.seq(
     Parser.token("Identifier"),
-    Parser.symbol(":"),
-    type(),
+    Parser.optional(Parser.symbol(":")),
+    Parser.optional(type()),
   ).pipe(
-    Parser.map(([identifier, _, type]) =>
+    Parser.map(([identifier, _colon, type]) =>
       new AST.VariablePattern(
         identifier,
-        type,
+        type ?? null,
         new AST.Span(
           identifier.span.start,
           type?.span.end ?? identifier.span.end,
@@ -343,8 +343,12 @@ function wildcardPattern(): Parser.Parser<AST.WildcardPattern> {
 }
 
 function voidConstructorPattern(): Parser.Parser<AST.VoidConstructorPattern> {
-  return Parser.token("Identifier").pipe(
-    Parser.map((identifier) =>
+  return Parser.seq(
+    Parser.token("Identifier"),
+    Parser.symbol("("),
+    Parser.symbol(")"),
+  ).pipe(
+    Parser.map(([identifier, _openParen, _closeParen]) =>
       new AST.VoidConstructorPattern(identifier, identifier.span)
     ),
   );
@@ -354,7 +358,7 @@ function tupleConstructorPattern(): Parser.Parser<AST.TupleConstructorPattern> {
   return Parser.seq(
     Parser.token("Identifier"),
     Parser.symbol("("),
-    Parser.lazy(matchCasePattern).pipe(
+    Parser.lazy(patterns).pipe(
       Parser.separatedBy(Parser.symbol(",")),
     ),
     Parser.symbol(")"),
@@ -408,7 +412,7 @@ function recordPatternField(): Parser.Parser<AST.RecordPatternField> {
   return Parser.seq(
     Parser.token("Identifier"),
     Parser.optional(Parser.symbol(":")),
-    Parser.optional(matchCasePattern()),
+    Parser.optional(patterns()),
   ).pipe(
     Parser.map(([name, _colon, pattern]) =>
       new AST.RecordPatternField(
@@ -421,7 +425,7 @@ function recordPatternField(): Parser.Parser<AST.RecordPatternField> {
 }
 
 function tuplePattern(): Parser.Parser<AST.TuplePattern> {
-  return Parser.lazy(matchCasePattern).pipe(
+  return Parser.lazy(patterns).pipe(
     Parser.separatedBy(Parser.symbol(",")),
     Parser.delimitedBy(Parser.symbol("["), Parser.symbol("]")),
   ).pipe(
@@ -490,13 +494,16 @@ export function functionParameter(): Parser.Parser<AST.FunctionParameter> {
     Parser.map((
       [
         identifier,
-        type
+        type,
       ],
     ) =>
       new AST.FunctionParameter(
         identifier,
         type?.[1] ?? null,
-        new AST.Span(identifier.span.start, type?.[1]?.span.end ?? identifier.span.end),
+        new AST.Span(
+          identifier.span.start,
+          type?.[1]?.span.end ?? identifier.span.end,
+        ),
       )
     ),
   );

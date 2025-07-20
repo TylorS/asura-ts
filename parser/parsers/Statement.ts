@@ -8,6 +8,7 @@ import { effectOperation } from "./EffectOperation.ts";
 import {
   expression,
   functionParameter,
+  patterns,
   returnExpressionOrBlock,
 } from "./Expression.ts";
 import {
@@ -338,14 +339,24 @@ export function effectDeclaration(): Parser.Parser<AST.EffectDeclaration> {
     Parser.token("effect"),
     Parser.token("Identifier"),
     Parser.optional(typeParametersList()),
-    Parser.symbol('{'),
+    Parser.symbol("{"),
     effectField().pipe(
       Parser.separatedBy(Parser.symbol(",")),
     ),
-    Parser.symbol('}'),
+    Parser.symbol("}"),
   ).pipe(
     Parser.map(
-      ([exportKeyword, effectKeyword, name, typeParameters, _open, fields, _close]) => {
+      (
+        [
+          exportKeyword,
+          effectKeyword,
+          name,
+          typeParameters,
+          _open,
+          fields,
+          _close,
+        ],
+      ) => {
         return new AST.EffectDeclaration(
           exportKeyword,
           name,
@@ -404,7 +415,7 @@ function effectField(): Parser.Parser<AST.RecordFieldType> {
           ),
       ),
     ),
-  )
+  );
 }
 
 export function functionDeclaration(): Parser.Parser<AST.FunctionDeclaration> {
@@ -516,8 +527,14 @@ export function interfaceDeclaration(): Parser.Parser<
   );
 }
 
-export function identiferOrDestructuring(): Parser.Parser<AST.Identifier> {
-  return Parser.token("Identifier"); // TODO: Allow destructuring
+export function identiferOrDestructuring(): Parser.Parser<AST.Identifier | AST.Pattern> {
+  return Parser.token("Identifier").pipe(
+    Parser.map((token) => new AST.Identifier(token.text, token.span)),
+    _ => Parser.or(
+      _,
+      patterns()
+    )
+  )
 }
 
 export function letDeclaration(): Parser.Parser<AST.LetDeclaration> {

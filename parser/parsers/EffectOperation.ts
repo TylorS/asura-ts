@@ -26,4 +26,4 @@ export function effectOperation(): Parser.Parser<AST.EffectOperation> {
       );
     }),
   );
-} 
+}

@@ -16,4 +16,4 @@ export function resumeExpression(): Parser.Parser<AST.ResumeExpression> {
       );
     }),
   );
-} 
+}

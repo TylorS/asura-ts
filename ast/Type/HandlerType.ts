@@ -5,6 +5,6 @@ export class HandlerType {
   readonly kind = "HandlerType";
   constructor(
     readonly effect: TypeReference,
-    readonly span: Span
+    readonly span: Span,
   ) {}
 }

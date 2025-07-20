@@ -200,7 +200,8 @@ describe("Statement Parser", () => {
       expect(effectDecl.fields).toHaveLength(1);
       expect(effectDecl.fields[0].name.text).toBe("log");
       expect(effectDecl.fields[0].type).toBeInstanceOf(AST.FunctionType);
-      expect((effectDecl.fields[0].type as AST.FunctionType).parameters).toHaveLength(1);
+      expect((effectDecl.fields[0].type as AST.FunctionType).parameters)
+        .toHaveLength(1);
     });
   });
 
@@ -290,7 +291,8 @@ describe("Statement Parser", () => {
       if (result.type === "success") {
         expect(result.value).toBeInstanceOf(AST.LetDeclaration);
         const letDecl = result.value as AST.LetDeclaration;
-        expect(letDecl.name.text).toBe("x");
+        expect(letDecl.name).toBeInstanceOf(AST.Identifier);
+        expect((letDecl.name as AST.Identifier).text).toBe("x");
         expect(letDecl.initializer).toBeInstanceOf(AST.IntegerLiteral);
       }
     });
@@ -319,8 +321,8 @@ describe("Statement Parser", () => {
       }
     });
 
-    it('should allow type annotations', () => {
-      const source = 'let x: Int = 42';
+    it("should allow type annotations", () => {
+      const source = "let x: Int = 42";
       const context = createParserContext(source);
       const result = statement().parse(context);
 
@@ -328,9 +330,9 @@ describe("Statement Parser", () => {
       expect(result.value).toBeInstanceOf(AST.LetDeclaration);
       const letDecl = result.value as AST.LetDeclaration;
       expect(letDecl.type).toBeInstanceOf(AST.IntegerType);
-    })
+    });
 
-    it('should allow handler type annotations', () => {
+    it("should allow handler type annotations", () => {
       const source = `
         let x: Handler<ForEach<_>> = handle ForEach<_> { 
           forEach: fun(items) => {
@@ -351,9 +353,9 @@ describe("Statement Parser", () => {
       expect(handlerType.effect).toBeInstanceOf(AST.TypeReference);
       expect(handlerType.effect.name.text).toBe("ForEach");
       expect(handlerType.effect.typeArguments).toHaveLength(1);
-    })
+    });
 
-    it('should allow intersection handler type annotations', () => {
+    it("should allow intersection handler type annotations", () => {
       const source = `
         let x: Handler<ForEach<_>> & Handler<IO> = handle ForEach<_> { 
           forEach: fun(items) => {
@@ -384,8 +386,25 @@ describe("Statement Parser", () => {
       expect(handlerType2.effect).toBeInstanceOf(AST.TypeReference);
       expect(handlerType1.effect.name.text).toBe("ForEach");
       expect(handlerType2.effect.name.text).toBe("IO");
+    });
 
-      console.log(letDecl.initializer);
+    it('should allow pattern matching let declarations', () => {
+      const source = `
+        let [x, y] = [1, 2]
+      `;
+      const context = createParserContext(source);
+      const result = statement().parse(context);
+
+      assertSuccess(result, context, source);
+      expect(result.value).toBeInstanceOf(AST.LetDeclaration);
+      const letDecl = result.value as AST.LetDeclaration;
+      expect(letDecl.name).toBeInstanceOf(AST.TuplePattern);
+      const tuplePattern = letDecl.name as AST.TuplePattern;
+      expect(tuplePattern.patterns).toHaveLength(2);
+      expect(tuplePattern.patterns[0]).toBeInstanceOf(AST.VariablePattern);
+      expect(tuplePattern.patterns[1]).toBeInstanceOf(AST.VariablePattern);
+      expect((tuplePattern.patterns[0] as AST.VariablePattern).name.text).toBe("x");
+      expect((tuplePattern.patterns[1] as AST.VariablePattern).name.text).toBe("y");
     })
   });
 
@@ -612,7 +631,9 @@ describe("Statement Parser", () => {
     });
 
     it("should parse effect operations with multiple arguments", () => {
-      const context = createParserContext("result <- IO.readFile(path, encoding)");
+      const context = createParserContext(
+        "result <- IO.readFile(path, encoding)",
+      );
       const result = statement().parse(context);
 
       expect(result.type).toBe("success");
@@ -642,7 +663,9 @@ describe("Statement Parser", () => {
     });
 
     it("should parse effect operations with complex arguments", () => {
-      const context = createParserContext("result <- Console.log(\"Hello\", user.name)");
+      const context = createParserContext(
+        'result <- Console.log("Hello", user.name)',
+      );
       const result = statement().parse(context);
 
       expect(result.type).toBe("success");

@@ -562,7 +562,8 @@ describe("Expression Parser", () => {
     });
 
     it("should parse handler expressions with function syntax", () => {
-      const source = "handle ForEach { forEach: fun(items) => { resume(items) } }";
+      const source =
+        "handle ForEach { forEach: fun(items) => { resume(items) } }";
       const context = createParserContext(source);
       const result = expression().parse(context);
 
@@ -570,14 +571,15 @@ describe("Expression Parser", () => {
     });
 
     it("should parse handler expressions with function syntax with type parameters", () => {
-      const source = "handle ForEach<A> { forEach: fun(items: Array<A>) => { resume(items) } }";
+      const source =
+        "handle ForEach<A> { forEach: fun(items: Array<A>) => { resume(items) } }";
       const context = createParserContext(source);
       const result = expression().parse(context);
 
       assertSuccess(result, context, source);
     });
 
-    it('should parse sugar syntax for function handler cases', () => {
+    it("should parse sugar syntax for function handler cases", () => {
       const source = "handle ForEach { forEach(items) => { resume(items) } }";
       const context = createParserContext(source);
       const result = expression().parse(context);

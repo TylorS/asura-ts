@@ -12,4 +12,4 @@ export class EffectOperation {
     readonly args: readonly Expression[],
     readonly span: Span,
   ) {}
-} 
+}

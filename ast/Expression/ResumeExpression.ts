@@ -8,4 +8,4 @@ export class ResumeExpression {
     readonly argument: Expression,
     readonly span: Span,
   ) {}
-} 
+}

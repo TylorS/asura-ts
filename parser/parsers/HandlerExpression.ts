@@ -8,7 +8,7 @@ export function handlerExpression(): Parser.Parser<AST.HandlerExpression> {
     Parser.token("handle"),
     typeReference(),
     Parser.symbol("{"),
-    Parser.or(handlerCase(), functionHandlerCase()).pipe(
+    Parser.or(functionHandlerCase(), handlerCase()).pipe(
       Parser.separatedBy(Parser.symbol(",")),
       Parser.optional,
     ),
@@ -49,12 +49,12 @@ function functionHandlerCase(): Parser.Parser<AST.HandlerCase> {
       Parser.separatedBy(Parser.symbol(",")),
     ),
     Parser.symbol(")"),
+    Parser.optional(Parser.symbol(":")),
     Parser.optional(effectRecordSignature()),
     Parser.optional(type()),
-    Parser.symbol("=>"),
     returnExpressionOrBlock(),
   ).pipe(
-    Parser.map(([operation, typeParameters, _open, parameters, _close, effects, returnType, _arrow, body]) => {
+    Parser.map(([operation, typeParameters, _open, parameters, _close, _colon, effects, returnType, body]) => {
       return new AST.HandlerCase(
         operation,
         new AST.FunctionExpression(

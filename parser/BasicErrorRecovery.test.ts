@@ -7,6 +7,7 @@ import { ParserContext, ParseResult } from "./Parser.ts";
 import { expression } from "./parsers/Expression.ts";
 import { block, statement } from "./parsers/Statement.ts";
 import { Symbol } from "../tokens/Token.ts";
+import * as AST from "../ast/mod.ts";
 
 function createParserContext(source: string): ParserContext {
   const tokens = tokenizeToArray(source);
@@ -568,8 +569,8 @@ describe("Basic Error Recovery Scenarios", () => {
       const context = createParserContext(source);
 
       // Parse multiple statements to collect all errors
-      const statements = [];
-      const allErrors = [];
+      const statements: AST.Statement[] = [];
+      const allErrors: Parser.ParseError[] = [];
 
       while (!context.isAtEnd()) {
         // Skip whitespace and newlines

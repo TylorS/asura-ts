@@ -1,7 +1,7 @@
 import { Token } from "../tokens/Token.ts";
 import { Span } from "../tokens/Span.ts";
 import { DiagnosticCode, DiagnosticFix } from "../diagnostics/mod.ts";
-import { ErrorContext, ParseError, ParserContext } from "./Parser.ts";
+import { ParseError, ParserContext } from "./Parser.ts";
 
 /**
  * Intelligent fix suggestion system for common error patterns

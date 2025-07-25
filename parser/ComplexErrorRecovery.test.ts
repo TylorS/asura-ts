@@ -13,6 +13,7 @@ import {
 import { expression } from "./parsers/Expression.ts";
 import { statement } from "./parsers/Statement.ts";
 import { pipe } from "./Pipeable.ts";
+import * as AST from "../ast/mod.ts";
 
 const EMPTY_SPAN = new Span(
   new SpanLocation(1, 1, 0),
@@ -280,8 +281,8 @@ describe("Complex Error Recovery Scenarios", () => {
       const context = createParserContext(source);
 
       // Parse multiple statements to collect all errors
-      const statements = [];
-      const allErrors = [];
+      const statements: AST.Statement[] = [];
+      const allErrors: Parser.ParseError[] = [];
 
       while (!context.isAtEnd()) {
         // Skip whitespace and newlines
